@@ -42,3 +42,10 @@ jobs:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SERVICE_ROLE }}
       run: python harvester/environment_enricher.py
+
+    - name: Run Normalization Engine
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SERVICE_ROLE }}
+        CURRENCY_API_KEY: ${{ secrets.CURRENCY_API_KEY }}
+      run: python harvester/normalization_engine.py
