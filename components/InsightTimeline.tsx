@@ -4,6 +4,8 @@ import { InsightCard } from './InsightCard';
 import { InsightSkeleton } from './InsightSkeleton';
 import { getUserInsights } from '@/services/insights';
 import { useAuth } from '@/hooks/useAuth';
+import { useDemoMode } from '@/context/DemoModeContext';
+import { demoInsights } from '@/data/demoInsights';
 import { Insight, Dataset } from '@/types';
 
 export interface InsightTimelineHandle {
@@ -16,6 +18,7 @@ interface InsightTimelineProps {
 
 export const InsightTimeline = forwardRef<InsightTimelineHandle, InsightTimelineProps>(({ datasets }, ref) => {
   const { user } = useAuth();
+  const { isDemoMode } = useDemoMode();
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,10 +28,13 @@ export const InsightTimeline = forwardRef<InsightTimelineHandle, InsightTimeline
     setLoading(true);
     setError(null);
     try {
+      if (isDemoMode) {
+        setInsights(demoInsights);
+        return;
+      }
       const { data, error: fetchError } = await getUserInsights(user.id);
       if (fetchError) throw new Error(fetchError);
       
-      // Filter out any broken insights
       const validInsights = (data || []).filter(i => i.summary && i.risk_level);
       setInsights(validInsights);
     } catch (err: any) {
@@ -36,7 +42,7 @@ export const InsightTimeline = forwardRef<InsightTimelineHandle, InsightTimeline
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, isDemoMode]);
 
   useEffect(() => {
     fetchInsights();

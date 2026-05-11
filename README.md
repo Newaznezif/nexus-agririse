@@ -1,56 +1,71 @@
-# Nexus Agririse
+# Nexus AgriRise Africa 🌍🚀
 
-A modern Next.js web application for Nexus Agririse, designed to provide a clean, secure UI for agricultural management and analytics.
+AI-powered Agribusiness Intelligence System for Africa. This platform empowers agribusinesses, NGOs, and regional trade organizations with data-driven insights to accelerate agricultural growth and cross-border trade.
 
-## Project overview
+## 🏗️ Architecture Summary
 
-This repository includes a TypeScript-based Next.js app with:
-- App Router structure under `app/`
-- Shared UI components in `components/`
-- Custom hooks in `hooks/`
-- Utility helpers in `lib/`
-- API integration in `services/api.ts`
-- Strong typing support in `types/`
+- **Framework**: Next.js 14+ (App Router)
+- **Styling**: Tailwind CSS
+- **Database & Auth**: Supabase
+- **AI Engine**: OpenAI (GPT-4o-mini)
+- **Intelligence**: Regional Comparison Module & PDF Export System
 
-## Quick start
+## 🚀 Quick Start Guide
 
-Install dependencies and run the local dev server:
+### 1. Prerequisites
+- Node.js 18.x or higher
+- npm 9.x or higher
+- [Supabase Account](https://supabase.com)
+- [OpenAI API Key](https://platform.openai.com)
 
+### 2. Clone & Install
 ```bash
+git clone https://github.com/Newaznezif/nexus-agririse.git
+cd nexus-agririse
 npm install
-npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+### 3. Environment Configuration
+Copy `.env.example` to `.env.local` and fill in your credentials:
+```bash
+cp .env.example .env.local
+```
+**Required Variables:**
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `OPENAI_API_KEY`
 
-## Available scripts
+### 4. Database Setup
+Ensure your Supabase project has the following tables:
+- `datasets`: `id, user_id, name, type, file_url, country, created_at`
+- `insights`: `id, user_id, dataset_id, summary, risk_level, trend, created_at`
 
-- `npm run dev` - start development server
-- `npm run build` - build production assets
-- `npm run start` - run production server
-- `npm run lint` - lint codebase
+### 5. Start Development
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000)
 
-## Recommended workflow
+## 🧪 Demo Mode
+The platform includes a **Demo Mode** toggle in the dashboard header. Enabling this allows you to present the platform's capabilities using pre-loaded, investor-grade African agribusiness intelligence data, completely bypassing API and database dependencies.
 
-1. Create a feature branch for each change.
-2. Keep UI and logic modular under `components/` and `services/`.
-3. Use `hooks/` for shared application behavior.
-4. Add type definitions to `types/` for new data models.
+## 🤝 Collaboration Workflow
 
-## Repository structure
+We follow a strict branch-based workflow to ensure stability:
 
-- `app/` - Next.js pages and routing
-- `components/` - reusable UI components
-- `hooks/` - custom React hooks
-- `lib/` - helper utilities
-- `public/` - static assets
-- `services/` - API request logic
-- `types/` - TypeScript types and interfaces
+1. **main**: Production-safe code. Never commit directly.
+2. **dev**: Integration branch for new features.
+3. **feature/***: Dedicated branches for specific tasks (e.g., `feature/ai-engine`).
 
-## Contributing
+**Flow**: `feature/branch` → Pull Request → Review → Merge to `dev` → Final Verification → Merge to `main`.
 
-Contributions are welcome. Open a pull request with a clear description of your change and include any relevant testing details.
+## 🛠️ Project Structure
+- `/app`: Route handlers and pages
+- `/components`: Reusable UI components
+- `/services`: API and business logic (OpenAI, Supabase)
+- `/context`: Global state (Auth, Demo Mode)
+- `/types`: TypeScript definitions
+- `/utils`: Helper functions
 
-## License
-
-This project is licensed under the MIT License.
+## 📜 License
+MIT License.

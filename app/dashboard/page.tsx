@@ -10,11 +10,12 @@ import { InsightTimeline, InsightTimelineHandle } from '@/components/InsightTime
 import { DatasetTable } from '@/components/DatasetTable';
 import { DatasetPreview } from '@/components/DatasetPreview';
 import { DemoToggle } from '@/components/DemoToggle';
+import { DashboardAnalytics } from '@/components/DashboardAnalytics';
 import { getUserDatasets } from '@/services/database';
 import { demoDatasets } from '@/data/demoDatasets';
 import { demoInsights } from '@/data/demoInsights';
 import { Dataset } from '@/types';
-import { Sparkles, Globe2 } from 'lucide-react';
+import { Sparkles, Globe2, Database, BrainCircuit, Globe, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardPage() {
@@ -122,15 +123,39 @@ export default function DashboardPage() {
 
       {/* STATS SECTION */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard title="Total Datasets Uploaded" value={activeDatasets.length} subtitle="Ready for analysis" />
-        <StatsCard title="AI Insights Generated" value={isDemoMode ? insightCount : '-'} subtitle="Active intelligence" />
-        <StatsCard title="Countries Covered" value={countries.length} subtitle="Regional footprint" />
         <StatsCard
-          title="Recent Activity"
+          title="Datasets Uploaded"
+          value={activeDatasets.length}
+          subtitle="Ready for analysis"
+          icon={Database}
+          iconColor="text-blue-600 dark:text-blue-400"
+          iconBg="bg-blue-50 dark:bg-blue-900/20"
+        />
+        <StatsCard
+          title="AI Insights Generated"
+          value={isDemoMode ? insightCount : '—'}
+          subtitle="Active intelligence"
+          icon={BrainCircuit}
+          iconColor="text-emerald-600 dark:text-emerald-400"
+          iconBg="bg-emerald-50 dark:bg-emerald-900/20"
+        />
+        <StatsCard
+          title="Countries Covered"
+          value={countries.length}
+          subtitle="Regional footprint"
+          icon={Globe}
+          iconColor="text-purple-600 dark:text-purple-400"
+          iconBg="bg-purple-50 dark:bg-purple-900/20"
+        />
+        <StatsCard
+          title="Last Upload"
           value={activeDatasets.length > 0 && activeDatasets[0].created_at
             ? new Date(activeDatasets[0].created_at).toLocaleDateString()
             : '—'}
-          subtitle="Last upload"
+          subtitle="Most recent activity"
+          icon={CalendarDays}
+          iconColor="text-amber-600 dark:text-amber-400"
+          iconBg="bg-amber-50 dark:bg-amber-900/20"
         />
       </section>
 
@@ -179,20 +204,10 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* ANALYTICS PLACEHOLDERS */}
+      {/* ANALYTICS SECTION */}
       <section>
         <h2 className="text-xl font-bold mb-4">Agribusiness Analytics Overview</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {['Market Price Trend', 'Country Comparison', 'Dataset Distribution'].map((label) => (
-            <div key={label} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-6 h-56 flex flex-col items-center justify-center text-gray-400 text-sm italic shadow-sm">
-              <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center mb-3">
-                <Globe2 size={18} className="text-gray-400" />
-              </div>
-              <span className="font-medium text-gray-500">{label}</span>
-              <span className="text-xs mt-1 text-gray-300">Chart renders after data analysis</span>
-            </div>
-          ))}
-        </div>
+        <DashboardAnalytics />
       </section>
 
       {/* DATASETS TABLE */}

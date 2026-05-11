@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { Dataset, Insight } from '@/types';
 import { formatDateTime } from '@/utils/formatDate';
 
@@ -53,12 +53,12 @@ export const generatePDFReport = (dataset: Dataset, insight: Insight) => {
     ['Upload Date', formatDateTime(dataset.created_at)],
   ];
 
-  (doc as any).autoTable({
+  autoTable(doc, {
     startY: cursorY,
     head: [['Field', 'Value']],
     body: datasetInfo,
     theme: 'striped',
-    headStyles: { fillStyle: 'emerald' },
+    headStyles: { fillColor: [5, 150, 105] }, // use numeric color for stability
     margin: { left: margin, right: margin },
   });
   cursorY = (doc as any).lastAutoTable.finalY + 15;

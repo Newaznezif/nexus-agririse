@@ -1,0 +1,208 @@
+"use client";
+import { motion } from "framer-motion";
+import { Mail, Globe, ExternalLink, Shield, Code, Server } from "lucide-react";
+
+export default function AboutPage() {
+  return (
+    <div className="flex flex-col bg-white dark:bg-black min-h-screen pt-20">
+      <section className="py-24 container mx-auto px-6">
+        <div className="text-center max-w-3xl mx-auto mb-20">
+          <h1 className="text-5xl font-black mb-6 tracking-tight">About <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-blue-600">Nexus AgriRise</span></h1>
+          <p className="text-xl text-gray-500 leading-relaxed">
+            We are building the digital future of African Agriculture through visionary AI and data engineering.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center mb-32">
+          <motion.div initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }}>
+            <h2 className="text-4xl font-bold mb-8">Visionary AI for African Agriculture</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+              Nexus AgriRise is an advanced AI-powered platform designed to transform complex agricultural data into actionable intelligence. By bridging the gap between raw data and strategic decision-making, our system empowers agribusinesses, farmers, and policymakers across Africa to optimize operations and mitigate cross-border risks.
+            </p>
+            <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
+              Our mission is to build the digital infrastructure for African agriculture. Through real-time data analysis, predictive modeling, and intelligent reporting, Nexus AgriRise delivers the exact insights needed to solve the continent's most pressing food security and supply chain challenges.
+            </p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1 }}
+            className="bg-emerald-600 h-[500px] rounded-[3rem] relative overflow-hidden group shadow-2xl"
+          >
+            <img
+              src="https://images.unsplash.com/photo-1590424753062-325177391f6e?q=80&w=2000&auto=format&fit=crop"
+              className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-1000"
+              alt="African agriculture"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-emerald-900 via-emerald-900/40 to-transparent" />
+            <div className="absolute bottom-12 left-12 right-12 text-white">
+              <p className="text-3xl font-bold italic leading-tight mb-4">&ldquo;We are building the digital future of African Agriculture.&rdquo;</p>
+              <div className="w-12 h-1 bg-emerald-400 mb-4 rounded-full" />
+              <p className="text-lg font-semibold tracking-wide">— Augustin Nkundimana</p>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* LEADERSHIP SECTION */}
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-sm font-semibold mb-4 uppercase tracking-widest">
+              Executive Team
+            </span>
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white">Our Leadership</h2>
+          </div>
+
+          <div className="space-y-12">
+
+            {/* Augustin */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="bg-gray-50 dark:bg-zinc-900/50 rounded-[2.5rem] p-8 md:p-12 border border-gray-100 dark:border-zinc-800 flex flex-col md:flex-row gap-10 relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px] pointer-events-none" />
+
+              {/* Profile image — large, fills card height */}
+              <div className="w-full md:w-64 flex-shrink-0 relative z-10">
+                <div className="w-full h-64 md:h-full min-h-[280px] rounded-3xl overflow-hidden border-2 border-emerald-500/20 shadow-lg">
+                  <img
+                    src="/Augestin.jpeg"
+                    alt="Augustin Nkundimana"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src =
+                        'https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?q=80&w=400&auto=format&fit=crop';
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="relative z-10 flex-1">
+                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-5">
+                  <div>
+                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">Augustin Nkundimana</h3>
+                    <p className="text-emerald-600 dark:text-emerald-400 font-medium text-lg">Founder &amp; CEO of AGRIC AI | Mandela Washington Fellow</p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <a href="mailto:augunkundimana@gmail.com" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-emerald-600 transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Mail size={20} /></a>
+                    <a href="https://www.linkedin.com/in/augustin-nkundimana-162349257" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Globe size={20} /></a>
+                    <a href="https://x.com/aunkundimana?s=21" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Globe size={20} /></a>
+                    <a href="https://github.com/nkundiman" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Globe size={20} /></a>
+                  </div>
+                </div>
+                <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
+                  Augustin Nkundimana is a Kigali-based Agritech Engineer, AI Entrepreneur, and Founder &amp; CEO of AGRIC AI — a Rwanda-based company leveraging Artificial Intelligence to improve agriculture for smallholder farmers across Africa. A 2025 Mandela Washington Fellow who completed the Leadership in Business Institute at Purdue University, he specializes in precision agriculture, edge AI, and sustainable farming technologies, and currently works with DIAL Ventures on AI-driven agricultural innovation. Through AGRIC AI, he has built a CNN-based crop disease detection system with offline capability and Kinyarwanda support, co-developed Thrive Rwanda (a tractor-sharing marketplace for farmers), and collaborated with Carnegie Mellon University Africa on AI-powered pest detection — all driven by his commitment to youth leadership, climate-smart agriculture, and pan-African food security.
+                </p>
+                <p className="text-emerald-600 dark:text-emerald-400 font-semibold text-sm">Contact: +250783692429</p>
+              </div>
+            </motion.div>
+
+            {/* Newaz */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="bg-gray-50 dark:bg-zinc-900/50 rounded-[2.5rem] p-8 md:p-12 border border-gray-100 dark:border-zinc-800 flex flex-col md:flex-row gap-10 relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-[80px] pointer-events-none" />
+
+              {/* Profile image — large, fills card height */}
+              <div className="w-full md:w-64 flex-shrink-0 relative z-10">
+                <div className="w-full h-64 md:h-full min-h-[280px] rounded-3xl overflow-hidden border-2 border-blue-500/20 shadow-lg">
+                  <img
+                    src="/Newaz.jpg"
+                    alt="Newaz Nezif Abagero"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src =
+                        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop';
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="relative z-10 flex-1">
+                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-5">
+                  <div>
+                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">Newaz Nezif Abagero</h3>
+                    <p className="text-blue-600 dark:text-blue-400 font-medium text-lg">Co-Founder &amp; Lead AI Architect | Cybersecurity Analyst</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <a href="https://linkedin.com/in/newaz-nezif-285439262" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Globe size={20} /></a>
+                    <a href="https://github.com/NewazNezif" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Globe size={20} /></a>
+                    <a href="https://newaznezif.netlify.app/" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-emerald-600 transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><ExternalLink size={20} /></a>
+                  </div>
+                </div>
+
+                <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
+                  Based in Addis Ababa, Ethiopia, Newaz Nezif Abagero is a Cybersecurity Analyst and Full-Stack Developer with a BSc in Information Systems from Wolkite University, specializing in Database Management, AI, and Full-Stack Development. A certified ISC2 CC, CEH, and SOC Analyst working at FDRE INSA, he is expert in threat monitoring, vulnerability assessments, and penetration testing. On the engineering side, he builds scalable full-stack systems in Python, Java, and modern web frameworks with a focus on secure API integration — and as a Kifiya AI Mastery Program (10 Academy) graduate, he brings deep hands-on experience with PyTorch, TensorFlow, data pipelines, and Generative AI.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white dark:bg-zinc-800/50 p-5 rounded-2xl border border-gray-100 dark:border-zinc-700/50">
+                    <Shield className="text-blue-500 mb-3" size={22} />
+                    <h4 className="font-bold text-gray-900 dark:text-white mb-1 text-sm">Cybersecurity</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">ISC2 CC · CEH · SOC Analysis · Penetration Testing · FDRE INSA</p>
+                  </div>
+                  <div className="bg-white dark:bg-zinc-800/50 p-5 rounded-2xl border border-gray-100 dark:border-zinc-700/50">
+                    <Code className="text-emerald-500 mb-3" size={22} />
+                    <h4 className="font-bold text-gray-900 dark:text-white mb-1 text-sm">Development</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Python · Java · React · Next.js · Secure API Architecture</p>
+                  </div>
+                  <div className="bg-white dark:bg-zinc-800/50 p-5 rounded-2xl border border-gray-100 dark:border-zinc-700/50">
+                    <Server className="text-purple-500 mb-3" size={22} />
+                    <h4 className="font-bold text-gray-900 dark:text-white mb-1 text-sm">AI &amp; Data</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">PyTorch · TensorFlow · Gen AI · 10 Academy Mastery Graduate</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Adonis */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="bg-gray-50 dark:bg-zinc-900/50 rounded-[2.5rem] p-8 md:p-12 border border-gray-100 dark:border-zinc-800 flex flex-col md:flex-row gap-10 relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/5 rounded-full blur-[80px] pointer-events-none" />
+
+              {/* Profile image — large, fills card height */}
+              <div className="w-full md:w-64 flex-shrink-0 relative z-10">
+                <div className="w-full h-64 md:h-full min-h-[280px] rounded-3xl overflow-hidden border-2 border-orange-500/20 shadow-lg">
+                  <img
+                    src="/Adonis.jpeg"
+                    alt="Adonis Wesley NGOY"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src =
+                        'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=400&auto=format&fit=crop';
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="relative z-10 flex-1">
+                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-5">
+                  <div>
+                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">Adonis Wesley NGOY</h3>
+                    <p className="text-orange-600 dark:text-orange-400 font-medium text-lg">Founder &amp; Executive Director, Les Cocotiers De Bangui</p>
+                  </div>
+                </div>
+                <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
+                  From the Central African Republic, Adonis Wesley NGOY is the Founder and Executive Director of Les Cocotiers De Bangui — a community development organization dedicated to youth empowerment and high-impact social initiatives. Holding a bachelor's degree in land governance and local development, he brings expertise in associative governance, project management, community mobilization, and mindset change education, with a strong focus on transformational leadership and civic responsibility. As President of the Federation of Civil Society Organizations of Bimbo and a YALI Regional Leadership Center East Africa alumnus, Adonis champions citizen participation, inclusive development, and pan-African social innovation to create sustainable opportunities for African youth.
+                </p>
+              </div>
+            </motion.div>
+
+          </div>
+        </div>
+      </section>
+
+      <footer className="py-10 border-t border-gray-100 dark:border-zinc-900 text-center text-sm text-gray-500 mt-auto">
+        <p>&copy; 2026 Nexus AgriRise Africa. All rights reserved.</p>
+      </footer>
+    </div>
+  );
+}

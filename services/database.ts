@@ -100,6 +100,20 @@ export async function getDatasetInsights(datasetId: string) {
   return { success: true, data };
 }
 
+export async function getUserInsights(userId: string) {
+  const { data, error } = await supabase
+    .from("insights")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, data };
+}
+
 /* =========================
    OPTIONAL UTILITY
 ========================= */

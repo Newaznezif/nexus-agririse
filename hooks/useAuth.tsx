@@ -3,10 +3,10 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
-import { useRouter } from 'next/navigation';
+import { useDemoMode } from '@/context/DemoModeContext';
 
 interface AuthContextType {
-  user: User | null;
+  user: User | any | null;
   session: Session | null;
   loading: boolean;
   logout: () => Promise<void>;
@@ -18,12 +18,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const { isDemoMode } = useDemoMode();
 
   useEffect(() => {
-    // Check active sessions and sets the user
     const getSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -31,7 +30,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     getSession();
 
-    // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
@@ -40,18 +38,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   const logout = async () => {
     await supabase.auth.signOut();
-    router.push('/login');
   };
 
+  const mockUser = {
+    id: 'demo-user-id',
+    email: 'demo@agririse.africa',
+    user_metadata: { full_name: 'Demo Investor' }
+  };
+
+  const activeUser = isDemoMode ? mockUser : user;
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, logout }}>
+    <AuthContext.Provider value={{ user: activeUser, session, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );

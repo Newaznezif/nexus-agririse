@@ -17,10 +17,14 @@ import { MarketTrendCard } from "@/components/MarketTrendCard";
 import { CountryComparisonTable } from "@/components/CountryComparisonTable";
 import { ComparisonChart } from "@/components/ComparisonChart";
 import { OpportunityGapCard } from "@/components/OpportunityGapCard";
+import { useDemoMode } from "@/context/DemoModeContext";
+import { demoDatasets } from "@/data/demoDatasets";
+import { demoInsights } from "@/data/demoInsights";
 import { Dataset, Insight } from "@/types";
 
 export default function ComparisonPage() {
   const { user, loading } = useAuth();
+  const { isDemoMode } = useDemoMode();
   const router = useRouter();
 
   const [datasets, setDatasets] = useState<Dataset[]>([]);
@@ -36,13 +40,20 @@ export default function ComparisonPage() {
     setFetching(true);
     setError(null);
     try {
-      const [dsResult, insResult] = await Promise.all([
-        getUserDatasets(user.id),
-        getUserInsights(user.id),
-      ]);
+      let ds: Dataset[] = [];
+      let ins: Insight[] = [];
 
-      const ds = dsResult.data || [];
-      const ins = insResult.data || [];
+      if (isDemoMode) {
+        ds = demoDatasets;
+        ins = demoInsights;
+      } else {
+        const [dsResult, insResult] = await Promise.all([
+          getUserDatasets(user.id),
+          getUserInsights(user.id),
+        ]);
+        ds = dsResult.data || [];
+        ins = insResult.data || [];
+      }
 
       setDatasets(ds);
       setInsights(ins);
@@ -59,7 +70,7 @@ export default function ComparisonPage() {
     } finally {
       setFetching(false);
     }
-  }, [user]);
+  }, [user, isDemoMode]);
 
   useEffect(() => {
     if (!loading && !user) {
