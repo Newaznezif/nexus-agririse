@@ -123,6 +123,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans), var(--font-noto-ethiopic), sans-serif;
   }
   html {
     @apply font-sans;

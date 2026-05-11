@@ -119,18 +119,18 @@ export default function Home() {
     <div className="flex flex-col bg-white dark:bg-black overflow-x-hidden">
 
       {/* ── HERO ── */}
-      <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-6 pt-20">
+      <section className="relative min-h-[85vh] flex flex-col justify-start pt-16 pb-10 px-4 lg:px-6 xl:px-10 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-[120px] animate-pulse" />
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-[120px] animate-pulse delay-1000" />
         </div>
 
-        <div className="container mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
+        <div className="w-full max-w-[120rem] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center relative z-10 flex-1 lg:-mt-12">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-left"
+            className="text-left lg:-ml-4 xl:-ml-10"
           >
             <span className="inline-block px-4 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-sm font-semibold mb-6">
               A Nexus Partnership with AGRIC AI
@@ -173,10 +173,19 @@ export default function Home() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, delay: 0.2 }}
-            className="relative"
+            className="relative flex justify-end lg:translate-x-12 xl:translate-x-20"
           >
-            <AfricaMap />
+            <div className="w-full max-w-[120%] lg:max-w-3xl xl:max-w-4xl scale-110 lg:scale-125 transform-gpu origin-center lg:origin-right">
+              <AfricaMap />
+            </div>
           </motion.div>
+        </div>
+
+        {/* Motto / Footer of Hero */}
+        <div className="w-full text-center relative z-10 mt-12 lg:mt-16 xl:mt-24">
+          <p className="text-2xl md:text-4xl font-extrabold italic tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 via-teal-500 to-blue-600 drop-shadow-sm">
+            “Africa does not lack food, it lacks intelligence in its food systems.”
+          </p>
         </div>
       </section>
 
@@ -344,6 +353,38 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── CTA BANNER ── */}
+      <section className="py-20 container mx-auto px-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.97 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.7 }}
+          viewport={{ once: true }}
+          className="bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-700 rounded-[2.5rem] p-12 md:p-16 text-white text-center relative overflow-hidden shadow-2xl shadow-emerald-500/20"
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.08),transparent)] pointer-events-none" />
+          <h2 className="text-4xl lg:text-5xl font-black mb-4 relative z-10">
+            Start generating intelligence today.
+          </h2>
+          <p className="text-emerald-100 text-lg mb-10 max-w-xl mx-auto relative z-10">
+            No credit card. No setup. Enable Demo Mode and explore investor-grade African agribusiness insights in under 60 seconds.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center relative z-10">
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="px-10 py-4 bg-white text-emerald-700 font-bold rounded-full hover:bg-emerald-50 transition-colors shadow-lg"
+            >
+              Launch Platform →
+            </button>
+            <Link href="/about">
+              <button className="px-10 py-4 bg-white/10 border border-white/20 font-semibold rounded-full hover:bg-white/20 transition-colors w-full sm:w-auto">
+                Meet the Team
+              </button>
+            </Link>
+          </div>
+        </motion.div>
+      </section>
+
       {/* ── PLATFORM OVERVIEW SPLIT ── */}
       <section className="py-28 bg-zinc-950 text-white relative overflow-hidden">
         <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-emerald-600/5 rounded-full blur-[120px] pointer-events-none" />
@@ -412,38 +453,6 @@ export default function Home() {
             </motion.div>
           </div>
         </div>
-      </section>
-
-      {/* ── CTA BANNER ── */}
-      <section className="py-20 container mx-auto px-6">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.97 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.7 }}
-          viewport={{ once: true }}
-          className="bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-700 rounded-[2.5rem] p-12 md:p-16 text-white text-center relative overflow-hidden shadow-2xl shadow-emerald-500/20"
-        >
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.08),transparent)] pointer-events-none" />
-          <h2 className="text-4xl lg:text-5xl font-black mb-4 relative z-10">
-            Start generating intelligence today.
-          </h2>
-          <p className="text-emerald-100 text-lg mb-10 max-w-xl mx-auto relative z-10">
-            No credit card. No setup. Enable Demo Mode and explore investor-grade African agribusiness insights in under 60 seconds.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center relative z-10">
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="px-10 py-4 bg-white text-emerald-700 font-bold rounded-full hover:bg-emerald-50 transition-colors shadow-lg"
-            >
-              Launch Platform →
-            </button>
-            <Link href="/about">
-              <button className="px-10 py-4 bg-white/10 border border-white/20 font-semibold rounded-full hover:bg-white/20 transition-colors w-full sm:w-auto">
-                Meet the Team
-              </button>
-            </Link>
-          </div>
-        </motion.div>
       </section>
 
       {/* ── CONTACT ── */}

@@ -92,7 +92,7 @@ export default function AboutPage() {
                   </div>
                 </div>
                 <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
-                  Augustin Nkundimana is a Kigali-based Agritech Engineer, AI Entrepreneur, and Founder &amp; CEO of AGRIC AI — a Rwanda-based company leveraging Artificial Intelligence to improve agriculture for smallholder farmers across Africa. A 2025 Mandela Washington Fellow who completed the Leadership in Business Institute at Purdue University, he specializes in precision agriculture, edge AI, and sustainable farming technologies, and currently works with DIAL Ventures on AI-driven agricultural innovation. Through AGRIC AI, he has built a CNN-based crop disease detection system with offline capability and Kinyarwanda support, co-developed Thrive Rwanda (a tractor-sharing marketplace for farmers), and collaborated with Carnegie Mellon University Africa on AI-powered pest detection — all driven by his commitment to youth leadership, climate-smart agriculture, and pan-African food security.
+                  Augustin Nkundimana is a Kigali-based Agritech Engineer, AI Entrepreneur, and Founder &amp; CEO of AGRIC AI. A 2025 Mandela Washington Fellow specializing in precision agriculture, he develops AI-driven solutions like offline crop disease detection and tractor-sharing marketplaces to drive climate-smart agriculture, youth leadership, and pan-African food security.
                 </p>
                 <p className="text-emerald-600 dark:text-emerald-400 font-semibold text-sm">Contact: +250783692429</p>
               </div>
@@ -136,7 +136,7 @@ export default function AboutPage() {
                 </div>
 
                 <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
-                  Based in Addis Ababa, Ethiopia, Newaz Nezif Abagero is a Cybersecurity Analyst and Full-Stack Developer with a BSc in Information Systems from Wolkite University, specializing in Database Management, AI, and Full-Stack Development. A certified ISC2 CC, CEH, and SOC Analyst working at FDRE INSA, he is expert in threat monitoring, vulnerability assessments, and penetration testing. On the engineering side, he builds scalable full-stack systems in Python, Java, and modern web frameworks with a focus on secure API integration — and as a Kifiya AI Mastery Program (10 Academy) graduate, he brings deep hands-on experience with PyTorch, TensorFlow, data pipelines, and Generative AI.
+                  Newaz Nezif Abagero is an Addis Ababa-based Cybersecurity Analyst at FDRE INSA and Full-Stack Developer. With expertise in threat monitoring and secure API integration, he builds scalable systems in Python, Java, and modern web frameworks. As a 10 Academy Mastery Graduate, he also brings deep experience in Generative AI, PyTorch, and TensorFlow.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -191,7 +191,7 @@ export default function AboutPage() {
                   </div>
                 </div>
                 <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
-                  From the Central African Republic, Adonis Wesley NGOY is the Founder and Executive Director of Les Cocotiers De Bangui — a community development organization dedicated to youth empowerment and high-impact social initiatives. Holding a bachelor's degree in land governance and local development, he brings expertise in associative governance, project management, community mobilization, and mindset change education, with a strong focus on transformational leadership and civic responsibility. As President of the Federation of Civil Society Organizations of Bimbo and a YALI Regional Leadership Center East Africa alumnus, Adonis champions citizen participation, inclusive development, and pan-African social innovation to create sustainable opportunities for African youth.
+                  Adonis Wesley NGOY is the Founder and Executive Director of Les Cocotiers De Bangui, driving youth empowerment and social innovation in the Central African Republic. A YALI Regional Leadership Center East Africa alumnus, he leverages his expertise in land governance and community mobilization to champion inclusive development and sustainable opportunities for African youth.
                 </p>
               </div>
             </motion.div>

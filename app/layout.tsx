@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Noto_Sans_Ethiopic } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -8,6 +8,12 @@ import { Toaster } from "react-hot-toast";
 
 const inter = Inter({
   subsets: ["latin"],
+});
+
+const notoEthiopic = Noto_Sans_Ethiopic({
+  subsets: ["ethiopic"],
+  weight: ["400", "700"],
+  variable: "--font-noto-ethiopic",
 });
 
 export const metadata: Metadata = {
@@ -22,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} min-h-screen flex flex-col antialiased`} suppressHydrationWarning>
+      <body className={`${inter.className} ${notoEthiopic.variable} min-h-screen flex flex-col antialiased`} suppressHydrationWarning>
         <DemoModeProvider>
           <Toaster position="top-right" />
           <AuthProvider>

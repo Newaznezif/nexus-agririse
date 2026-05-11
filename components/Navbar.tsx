@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from './Button';
 import { Moon, Sun, Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 export const Navbar = () => {
   const pathname = usePathname();
@@ -80,6 +81,8 @@ export const Navbar = () => {
 
         {/* Right side — desktop */}
         <div className="flex items-center gap-4">
+          <LanguageSwitcher />
+          
           <button
             onClick={toggleTheme}
             className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors text-gray-500 dark:text-gray-400"
