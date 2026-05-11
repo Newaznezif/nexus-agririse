@@ -49,3 +49,10 @@ jobs:
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SERVICE_ROLE }}
         CURRENCY_API_KEY: ${{ secrets.CURRENCY_API_KEY }}
       run: python harvester/normalization_engine.py
+
+    - name: Run AI Intelligence Generation
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SERVICE_ROLE }}
+        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      run: python harvester/intelligence_generator.py
