@@ -1,6 +1,7 @@
 import asyncio
 import os
 import json
+import re
 from datetime import datetime
 from playwright.async_api import async_playwright
 from playwright_stealth import stealth_async
@@ -28,6 +29,14 @@ async def upsert_data(data_list):
     except Exception as e:
         print(f"Supabase Upsert Error: {e}")
 
+def safe_float(value):
+    try:
+        # Remove commas, currency symbols, and other non-numeric chars except period
+        clean_value = "".join(c for c in value if c.isdigit() or c == '.')
+        return float(clean_value) if clean_value else 0.0
+    except:
+        return 0.0
+
 async def scrape_ecx(page):
     """Scrapes Ethiopia Commodity Exchange (ECX) market data."""
     print("Navigating to ECX Market Data...")
@@ -36,23 +45,20 @@ async def scrape_ecx(page):
         await page.wait_for_load_state("networkidle")
         
         # ECX often uses complex table structures or iframes. 
-        # We target the most likely table container.
         await page.wait_for_selector("table", timeout=30000)
         
         records = []
-        # Extract rows from tables that look like data grids
         rows = await page.locator("table tr").all()
         
         for row in rows:
             cells = await row.locator("td").all_inner_texts()
             if len(cells) >= 5:
-                # Common ECX Grid: Commodity, Grade, Warehouse, Year, Price, Volume
                 records.append({
                     "commodity_name": cells[0].strip(),
                     "grade": cells[1].strip(),
-                    "region_market": cells[2].strip(), # Warehouse usually acts as region/market
-                    "price": float(cells[4].replace(",", "")) if cells[4].replace(",", "").replace(".", "").isdigit() else 0,
-                    "volume": float(cells[5].replace(",", "")) if len(cells) > 5 and cells[5].replace(",", "").replace(".", "").isdigit() else 0,
+                    "region_market": cells[2].strip(),
+                    "price": safe_float(cells[4]),
+                    "volume": safe_float(cells[5]) if len(cells) > 5 else 0.0,
                     "timestamp": datetime.utcnow().isoformat(),
                     "source": "ECX"
                 })
@@ -86,8 +92,8 @@ async def scrape_naeb(page):
             if len(cells) >= 3:
                 records.append({
                     "commodity_name": cells[0].strip(),
-                    "price": float(cells[1].replace(",", "")) if cells[1].replace(",", "").replace(".", "").isdigit() else 0,
-                    "volume": float(cells[2].replace(",", "")) if len(cells) > 2 and cells[2].replace(",", "").replace(".", "").isdigit() else 0,
+                    "price": safe_float(cells[1]),
+                    "volume": safe_float(cells[2]),
                     "grade": cells[3].strip() if len(cells) > 3 else "Standard",
                     "region_market": "Rwanda National",
                     "timestamp": datetime.utcnow().isoformat(),
@@ -124,5 +130,4 @@ async def run_harvester():
         print("Harvester run complete.")
 
 if __name__ == "__main__":
-    import re
     asyncio.run(run_harvester())
