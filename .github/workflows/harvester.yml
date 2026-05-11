@@ -36,3 +36,9 @@ jobs:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SERVICE_ROLE }}
       run: python harvester/main.py
+
+    - name: Run Environmental Enrichment
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SERVICE_ROLE }}
+      run: python harvester/environment_enricher.py
