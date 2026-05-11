@@ -26,7 +26,10 @@ jobs:
         pip install -r harvester/requirements.txt
 
     - name: Install Playwright Browsers
-      run: playwright install chromium --with-deps
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libglib2.0-0 libglib2.0-dev
+        playwright install chromium --with-deps
 
     - name: Run Harvester
       env:
