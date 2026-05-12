@@ -2,34 +2,35 @@ import os
 import json
 import asyncio
 from datetime import datetime
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from supabase import create_client, Client
 
 # --- Configuration ---
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+# Clean the URL to avoid double slashes and 404s
+raw_url = os.environ.get("SUPABASE_URL")
+SUPABASE_URL = raw_url.rstrip('/') if raw_url else None
+
+# Handle potential naming variations for the service role key
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SERVICE_ROLE")
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY or not GOOGLE_API_KEY:
-    print("Error: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and GOOGLE_API_KEY must be set.")
+    print(f"Error: Missing environment variables. URL: {bool(SUPABASE_URL)}, KEY: {bool(SUPABASE_KEY)}, GOOGLE: {bool(GOOGLE_API_KEY)}")
     exit(1)
 
 # Initialize Supabase
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Initialize Gemini
-genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
-    system_instruction="You are a Senior African Agribusiness Analyst. Your goal is to identify arbitrage windows and supply chain risks across Ethiopia, Rwanda, and the Central African Republic. Provide actionable, high-level intelligence for traders and investors."
-)
+# Initialize Gemini with the new google-genai SDK
+client = genai.Client(api_key=GOOGLE_API_KEY)
+MODEL_ID = "gemini-1.5-flash"
 
 async def generate_market_intelligence():
-    print("Generating AI Market Intelligence...")
+    print("Generating AI Market Intelligence (Modernized)...")
     
-    # 1. Query the latest data from the unified_market_intel view
     try:
-        # Fetch the most recent records from the view
+        # 1. Query the latest data from the unified_market_intel view
         res = supabase.table("unified_market_intel").select("*").limit(20).execute()
         market_data = res.data
         if not market_data:
@@ -47,53 +48,70 @@ async def generate_market_intelligence():
         Data Table (Unified Market Intelligence):
         {data_summary}
         
-        Task: Analyze the data above for arbitrage opportunities and climate-related supply risks.
+        Task: Analyze the data for arbitrage windows and climate-related supply risks.
         
         Requirements:
-        1. Identify price gaps between regions for the same commodity.
-        2. Evaluate the impact of Climate Risk Scores and NDVI health on future pricing.
-        3. Output a strict JSON object for EACH unique commodity found in the data.
+        1. Identify price gaps between regions.
+        2. Evaluate Climate Risk Scores and NDVI health.
+        3. Output a strict JSON object for EACH unique commodity found.
         
-        JSON Format:
+        JSON Format (Required Keys):
         [
           {{
             "commodity_name": "string",
-            "summary": "A 2-sentence market overview.",
-            "arbitrage_alert": "Specific profit gap between two countries in $/MT.",
-            "risk_factor": "Analysis of the Climate Risk Score vs. Price Trend.",
-            "recommendation": "Buy/Sell/Hold style action with brief reasoning."
+            "summary": "2-sentence market overview.",
+            "risk_level": "Low, Medium, or High based on data.",
+            "trend": "Bullish, Bearish, or Neutral based on arbitrage and risk."
           }}
         ]
         """
         
-        # 3. Call Gemini 1.5 Flash
-        response = model.generate_content(prompt)
+        # 3. Call Gemini using the new SDK
+        print("Calling Gemini 1.5 Flash...")
+        config = types.GenerateContentConfig(
+            system_instruction="You are a Senior African Agribusiness Analyst. Identify arbitrage windows and supply chain risks."
+        )
         
-        # Clean response text (remove markdown code blocks if present)
+        response = client.models.generate_content(
+            model=MODEL_ID,
+            contents=prompt,
+            config=config
+        )
+        
+        # Logging the raw response for debugging
+        print(f"Gemini Response: {response.text}")
+        
+        # Clean response text
         response_text = response.text.replace("```json", "").replace("```", "").strip()
         
         try:
             insights = json.loads(response_text)
             print(f"Generated {len(insights)} AI insights.")
             
-            # 4. Upsert to ai_insights table
-            upsert_payload = []
+            # 4. Insert to insights table
+            insert_payload = []
             for item in insights:
-                upsert_payload.append({
-                    "commodity_name": item.get("commodity_name"),
+                insert_payload.append({
                     "summary": item.get("summary"),
-                    "recommendation": item.get("recommendation"),
-                    "insight_json": item,
-                    "generated_at": datetime.utcnow().isoformat()
+                    "risk_level": item.get("risk_level"),
+                    "trend": item.get("trend"),
+                    "created_at": datetime.utcnow().isoformat()
                 })
             
-            if upsert_payload:
-                supabase.table("ai_insights").upsert(upsert_payload).execute()
-                print("AI Intelligence successfully stored in Supabase.")
+            if insert_payload:
+                print(f"Inserting into 'insights' table...")
+                try:
+                    # Target the 'insights' table as requested
+                    result = supabase.table("insights").insert(insert_payload).execute()
+                    print("AI Intelligence successfully stored in insights table.")
+                except Exception as db_err:
+                    print(f"Supabase Insertion Error: {db_err}")
+                    # Log more details if possible
+                    if hasattr(db_err, 'message'):
+                        print(f"Message: {db_err.message}")
                 
         except json.JSONDecodeError as je:
             print(f"Error parsing AI response: {je}")
-            print(f"Raw response: {response_text}")
 
     except Exception as e:
         print(f"Error in AI Intelligence Generation: {e}")
