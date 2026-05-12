@@ -40,34 +40,47 @@ def safe_float(value):
 async def scrape_ecx(page):
     """Scrapes Ethiopia Commodity Exchange (ECX) market data."""
     print("Navigating to ECX Market Data...")
-    try:
-        # Increased timeout to 120s for slow government portal
-        await page.goto("https://www.ecx.com.et/Pages/MarketDataPage.aspx", timeout=120000)
-        await page.wait_for_load_state("networkidle")
-        
-        # ECX often uses complex table structures or iframes. 
-        await page.wait_for_selector("table", timeout=60000)
-        
-        records = []
-        rows = await page.locator("table tr").all()
-        
-        for row in rows:
-            cells = await row.locator("td").all_inner_texts()
-            if len(cells) >= 5:
-                records.append({
-                    "commodity_name": cells[0].strip(),
-                    "grade": cells[1].strip(),
-                    "region_market": cells[2].strip(),
-                    "price": safe_float(cells[4]),
-                    "volume": safe_float(cells[5]) if len(cells) > 5 else 0.0,
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "source": "ECX"
-                })
-        
-        return records
-    except Exception as e:
-        print(f"ECX Scraping Error: {e}")
-        return []
+    
+    max_retries = 2
+    for attempt in range(max_retries):
+        try:
+            if attempt > 0:
+                print(f"ECX Retry {attempt}/{max_retries - 1}. Increasing viewport and waiting 30s...")
+                await asyncio.sleep(30)
+                await page.set_viewport_size({"width": 1920, "height": 1080})
+                
+            # Increased timeout to 120s for slow government portal
+            await page.goto("https://www.ecx.com.et/Pages/MarketDataPage.aspx", timeout=120000)
+            await page.wait_for_load_state("networkidle")
+            
+            # ECX often uses complex table structures or iframes. 
+            await page.wait_for_selector("table", timeout=60000)
+            
+            records = []
+            rows = await page.locator("table tr").all()
+            
+            for row in rows:
+                cells = await row.locator("td").all_inner_texts()
+                if len(cells) >= 5:
+                    records.append({
+                        "commodity_name": cells[0].strip(),
+                        "grade": cells[1].strip(),
+                        "region_market": cells[2].strip(),
+                        "price": safe_float(cells[4]),
+                        "volume": safe_float(cells[5]) if len(cells) > 5 else 0.0,
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "source": "ECX"
+                    })
+            
+            if records:
+                return records
+            else:
+                print(f"ECX table found but no records parsed on attempt {attempt + 1}.")
+                
+        except Exception as e:
+            print(f"ECX Scraping Error (Attempt {attempt + 1}): {e}")
+            
+    return []
 
 async def scrape_naeb(page):
     """Scrapes Rwanda NAEB price reports."""

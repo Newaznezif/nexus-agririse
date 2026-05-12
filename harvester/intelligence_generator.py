@@ -48,11 +48,11 @@ async def generate_market_intelligence():
             print("Awaiting real market data harvest... skipping AI generation.")
             return
             
-        # 2. Assemble Context with System Instructions as Prefix
-        system_prefix = "SYSTEM: You are a Senior African Agribusiness Analyst. Identify arbitrage windows and supply chain risks across Ethiopia, Rwanda, and CAR.\n\n"
+        # 2. Assemble Context
+        data_summary = json.dumps(market_data, indent=2)
+        current_date = datetime.now().strftime("%B %Y")
         
         prompt = f"""
-        {system_prefix}
         Current Date: {current_date}
         Context: The year is 2026. AfCFTA is progressing, but fuel costs remain high across East and Central Africa.
         
@@ -77,12 +77,17 @@ async def generate_market_intelligence():
         ]
         """
         
-        # 3. Call Gemini using the new SDK
-        print("Calling Gemini 1.5 Flash (Standard Mode)...")
+        # 3. Call Gemini using the new SDK with strict contents array
+        print("Calling Gemini 1.5 Flash (Production Mode)...")
+        
+        contents_payload = [
+            {"role": "system", "parts": [{"text": "You are a Senior African Agribusiness Analyst. Identify arbitrage windows and supply chain risks across Ethiopia, Rwanda, and CAR."}]},
+            {"role": "user", "parts": [{"text": prompt}]}
+        ]
         
         response = client.models.generate_content(
             model=MODEL_ID,
-            contents=prompt
+            contents=contents_payload
         )
         
         # Logging the raw response for debugging

@@ -31,6 +31,13 @@ jobs:
         sudo apt-get install -y libglib2.0-0 libglib2.0-dev
         playwright install chromium --with-deps
 
+    - name: Pre-Flight Check (Database & API Audit)
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SERVICE_ROLE: ${{ secrets.SERVICE_ROLE }}
+        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      run: python harvester/pre_flight_check.py
+
     - name: Run Harvester
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
