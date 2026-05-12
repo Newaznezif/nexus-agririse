@@ -3,7 +3,12 @@ import autoTable from 'jspdf-autotable';
 import { Dataset, Insight } from '@/types';
 import { formatDateTime } from '@/utils/formatDate';
 
-export const generatePDFReport = async (dataset: Dataset, insight: Insight, generatorName: string = 'Nexus AgriRise') => {
+export const generatePDFReport = async (
+  dataset: Dataset, 
+  insight: Insight, 
+  generatorName: string = 'Nexus AgriRise',
+  generatorRole: string = 'Authorized Intelligence System'
+) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -150,7 +155,10 @@ export const generatePDFReport = async (dataset: Dataset, insight: Insight, gene
   doc.text('AUTHORIZED BY', margin + 10, 222);
   doc.text('GENERATION DATE', pageWidth / 2, 222);
   doc.setFont('helvetica', 'normal');
-  doc.text('NEXUS AGRIRISE SYSTEM', margin + 10, 232);
+  doc.text(generatorName.toUpperCase(), margin + 10, 232);
+  doc.setFontSize(8);
+  doc.text(generatorRole.toUpperCase(), margin + 10, 237);
+  doc.setFontSize(10);
   doc.text(formatDateTime(new Date().toISOString()), pageWidth / 2, 232);
 
   // --- PAGE 2: METADATA & VISUALIZATION ---
