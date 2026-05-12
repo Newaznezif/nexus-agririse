@@ -1,5 +1,6 @@
 "use client";
 import { Button } from "@/components/Button";
+import { Counter } from '@/components/Counter';
 import { useRouter } from "next/navigation";
 import { AfricaMap } from "@/components/AfricaMap";
 import { motion } from "framer-motion";
@@ -202,7 +203,9 @@ export default function Home() {
                 custom={i}
                 viewport={{ once: true }}
               >
-                <p className="text-4xl font-black mb-1">{s.value}</p>
+                <p className="text-4xl font-black mb-1">
+                  <Counter value={s.value} />
+                </p>
                 <p className="text-emerald-100 text-sm font-medium">{s.label}</p>
               </motion.div>
             ))}
