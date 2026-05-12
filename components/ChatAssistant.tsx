@@ -140,7 +140,7 @@ export const ChatAssistant = () => {
             className="fixed bottom-8 right-8 z-[60] w-16 h-16 bg-emerald-600 text-white rounded-full shadow-2xl flex items-center justify-center border-4 border-white dark:border-zinc-900 overflow-hidden group"
           >
             <div className="absolute inset-0 bg-gradient-to-tr from-emerald-600 to-teal-400 group-hover:rotate-12 transition-transform duration-500" />
-            {isOpen ? <X className="relative z-10 w-8 h-8" /> : <MessageCircle className="relative z-10 w-8 h-8" />}
+            {isOpen ? <X className="relative z-10 w-8 h-8" /> : <Bot className="relative z-10 w-8 h-8" />}
           </motion.button>
         )}
       </AnimatePresence>
@@ -157,8 +157,8 @@ export const ChatAssistant = () => {
             {/* Header */}
             <div className="bg-emerald-600 p-6 flex items-center justify-between">
               <div className="flex items-center gap-3 text-white">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
-                  <Sparkles size={20} className="text-emerald-100" />
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20">
+                  <Bot size={22} className="text-white" />
                 </div>
                 <div>
                   <h3 className="font-black text-sm uppercase tracking-widest">NEXUS ASSISTANT</h3>
