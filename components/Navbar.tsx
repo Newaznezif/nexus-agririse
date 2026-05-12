@@ -43,7 +43,7 @@ export const Navbar = () => {
     { href: '/services', label: 'Services' },
     { href: '/#insights', label: 'Insights' },
     { href: '/testimonial', label: 'Testimonial' },
-    { href: '/#pricing', label: 'Pricing' },
+    { href: '/pricing', label: 'Pricing' },
     { href: '/#contact', label: 'Contact' },
   ];
 
