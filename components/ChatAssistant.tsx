@@ -72,10 +72,48 @@ export const ChatAssistant = () => {
 
   const getBotResponse = (query: string) => {
     const q = query.toLowerCase();
-    if (q.includes('price') || q.includes('market')) return "I can help you track commodity prices across Ethiopia, Rwanda, and CAR. Which market are you interested in?";
-    if (q.includes('risk') || q.includes('climate')) return "Our AI analyzes climate and supply chain risks in real-time. You can see detailed risk badges on the Dashboard.";
-    if (q.includes('contact') || q.includes('help')) return "You can reach our team at arusha@agririse.africa or via the Contact page.";
-    return "That's a great question about African agriculture! I'm NEXUS ASSISTANT, and I'm here to provide data-driven insights. Could you tell me more?";
+    
+    // HOW TO USE / STARTING
+    if (q.includes('how to use') || q.includes('get started') || q.includes('start')) {
+      return "To get started with Nexus AgriRise: 1. Create an account via the 'Get Start here' button. 2. Access your Dashboard to see real-time market data. 3. Use the Insights tab for AI-driven predictive analysis. 4. Explore the Services page for specific supply chain tools.";
+    }
+
+    // WHAT IS IN IT / FEATURES
+    if (q.includes('what is in it') || q.includes('features') || q.includes('what do you do')) {
+      return "Nexus AgriRise offers: 📊 Real-time market prices across Africa, 🛡️ Climate risk scoring, 🧠 AI-powered agribusiness insights, 📉 Cross-border arbitrage alerts, and 📄 Exportable intelligence reports. We bridge the gap between raw data and strategic decision-making.";
+    }
+
+    // PRICING
+    if (q.includes('price') || q.includes('cost') || q.includes('pricing')) {
+      return "We have three tiers: 1. Starter (Free) for individuals. 2. Professional ($49/mo) with AI insights. 3. Enterprise (Custom) for large operations. Check our Pricing page for more details!";
+    }
+
+    // MARKET DATA
+    if (q.includes('market') || q.includes('data') || q.includes('commodity')) {
+      return "Our platform tracks key commodities like Coffee, Maize, and Wheat across major African markets including Ethiopia, Rwanda, and CAR. You can view these directly on your Dashboard.";
+    }
+
+    // AI / INSIGHTS
+    if (q.includes('ai') || q.includes('intelligence') || q.includes('insight')) {
+      return "Our 'Visionary AI' analyzes historical trends, weather patterns, and supply chain disruptions to predict market shifts before they happen, helping you mitigate risks effectively.";
+    }
+
+    // CONTACT / HELP
+    if (q.includes('contact') || q.includes('support') || q.includes('help') || q.includes('reach')) {
+      return "You can reach us through our Contact page, email us at arusha@agririse.africa, or call us at +251 900 000 000. Our team is ready to assist you!";
+    }
+
+    // WHO ARE YOU / AUGUSTIN
+    if (q.includes('who are you') || q.includes('founder') || q.includes('ceo') || q.includes('augustin')) {
+      return "I am NEXUS ASSISTANT, the AI heart of this platform. Nexus AgriRise was founded by Augustin Nkundimana, a Mandela Washington Fellow and Agritech Engineer, to build Africa's digital agricultural future.";
+    }
+
+    // ABOUT / MISSION
+    if (q.includes('about') || q.includes('mission') || q.includes('vision')) {
+      return "Our mission is to build the digital infrastructure for African agriculture. We transform complex data into actionable intelligence to solve food security and supply chain challenges across the continent.";
+    }
+
+    return "I'm NEXUS ASSISTANT, and I'm specialized in our platform's data-driven insights. You can ask me how to use the dashboard, what features we offer, or about our pricing and mission!";
   };
 
   return (
