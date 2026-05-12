@@ -39,7 +39,7 @@ export const Navbar = () => {
 
   const links = [
     { href: '/', label: 'Home' },
-    ...(!user ? [{ href: '/dashboard', label: 'Get Start here' }] : []),
+    ...(!user ? [{ href: '/dashboard', label: 'Get Started' }] : []),
     { href: '/about', label: 'About' },
     { href: '/services', label: 'Services' },
     { href: '/#insights', label: 'Insights' },
@@ -59,9 +59,9 @@ export const Navbar = () => {
         {/* Brand Text & Logo */}
         <div className="flex items-center">
           <Link href="/" className="mr-8 flex items-center space-x-4">
-            <img 
-              src="/Logo.jpeg" 
-              alt="Nexus AgriRise Logo" 
+            <img
+              src="/Logo.jpeg"
+              alt="Nexus AgriRise Logo"
               className="w-24 h-24 rounded-full object-cover shadow-lg border-2 border-white dark:border-zinc-900"
             />
             <span className="font-bold text-2xl tracking-tight text-emerald-700 dark:text-emerald-500">
@@ -74,11 +74,10 @@ export const Navbar = () => {
               <Link
                 key={link.label}
                 href={link.href}
-                className={`text-base transition-colors hover:text-emerald-600 dark:hover:text-emerald-400 ${
-                  isActive(link.href)
-                    ? 'text-emerald-600 dark:text-emerald-500 font-semibold'
-                    : 'text-gray-500 dark:text-gray-400 font-medium'
-                }`}
+                className={`text-base transition-colors hover:text-emerald-600 dark:hover:text-emerald-400 ${isActive(link.href)
+                  ? 'text-emerald-600 dark:text-emerald-500 font-semibold'
+                  : 'text-gray-500 dark:text-gray-400 font-medium'
+                  }`}
               >
                 {link.label}
               </Link>
@@ -89,7 +88,7 @@ export const Navbar = () => {
         {/* Right side — desktop */}
         <div className="flex items-center gap-4">
           <LanguageSwitcher />
-          
+
           <button
             onClick={toggleTheme}
             className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors text-gray-500 dark:text-gray-400"
@@ -129,11 +128,10 @@ export const Navbar = () => {
               <Link
                 key={link.label}
                 href={link.href}
-                className={`px-4 py-3 rounded-xl text-base font-medium transition-colors ${
-                  isActive(link.href)
-                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-900'
-                }`}
+                className={`px-4 py-3 rounded-xl text-base font-medium transition-colors ${isActive(link.href)
+                  ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-900'
+                  }`}
               >
                 {link.label}
               </Link>
