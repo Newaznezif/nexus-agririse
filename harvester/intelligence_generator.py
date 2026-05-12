@@ -27,7 +27,7 @@ client = genai.Client(api_key=GOOGLE_API_KEY)
 MODEL_ID = "gemini-1.5-flash"
 
 async def generate_market_intelligence():
-    print("Generating AI Market Intelligence (Modernized)...")
+    print(f"Generating AI Market Intelligence (Modernized)... Model: {MODEL_ID}")
     
     try:
         # 1. Query the latest data from the unified_market_intel view
