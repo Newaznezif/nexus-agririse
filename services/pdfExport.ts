@@ -181,8 +181,6 @@ export const generatePDFReport = async (dataset: Dataset, insight: Insight, gene
     doc.text('Impact Allocation', x, y + radius + 10, { align: 'center' });
   };
 
-  await drawHeader();
-
   // --- SECTION 1: IDENTITY & METADATA ---
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
