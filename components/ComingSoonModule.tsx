@@ -25,7 +25,7 @@ export const ComingSoonModule = ({ title, icon: Icon, description }: ComingSoonP
           <Icon size={48} />
         </motion.div>
 
-        <h1 className="text-4xl font-black tracking-tight text-gray-900 dark:text-white uppercase italic mb-4">
+        <h1 className="text-4xl font-black tracking-tight text-gray-900 dark:text-white uppercase mb-4">
           {title}
         </h1>
         <p className="text-gray-500 dark:text-gray-400 font-medium mb-10 leading-relaxed">
