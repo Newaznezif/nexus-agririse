@@ -22,8 +22,8 @@ if not SUPABASE_URL or not SUPABASE_KEY or not GOOGLE_API_KEY:
 # Initialize Supabase
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Initialize Gemini with the new google-genai SDK
-client = genai.Client(api_key=GOOGLE_API_KEY)
+# Initialize Gemini with the new google-genai SDK using stable v1 endpoint
+client = genai.Client(api_key=GOOGLE_API_KEY, http_options={'api_version': 'v1'})
 MODEL_ID = "gemini-1.5-flash"
 
 async def generate_market_intelligence():
@@ -41,7 +41,7 @@ async def generate_market_intelligence():
             return
 
         if not market_data:
-            print("Status: Unified view exists but is currently empty. No analysis to perform.")
+            print("No market data available for analysis today. Stopping gracefully.")
             return
             
         # 2. Assemble Context

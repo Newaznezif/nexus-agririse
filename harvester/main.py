@@ -41,11 +41,12 @@ async def scrape_ecx(page):
     """Scrapes Ethiopia Commodity Exchange (ECX) market data."""
     print("Navigating to ECX Market Data...")
     try:
-        await page.goto("https://www.ecx.com.et/Pages/MarketDataPage.aspx", timeout=60000)
+        # Increased timeout to 120s for slow government portal
+        await page.goto("https://www.ecx.com.et/Pages/MarketDataPage.aspx", timeout=120000)
         await page.wait_for_load_state("networkidle")
         
         # ECX often uses complex table structures or iframes. 
-        await page.wait_for_selector("table", timeout=30000)
+        await page.wait_for_selector("table", timeout=60000)
         
         records = []
         rows = await page.locator("table tr").all()
@@ -72,12 +73,13 @@ async def scrape_naeb(page):
     """Scrapes Rwanda NAEB price reports."""
     print("Navigating to NAEB Rwanda...")
     try:
-        await page.goto("https://www.naeb.gov.rw/", timeout=60000)
+        await page.goto("https://www.naeb.gov.rw/", timeout=120000)
         await page.wait_for_load_state("networkidle")
         
         # NAEB often has a "Market Intelligence" or "Reports" section.
-        # We look for links containing 'report' or 'price'.
-        price_link = await page.get_by_role("link", name=re.compile("Price|Report|Market", re.IGNORECASE)).first()
+        # Fixed: Removed await from locator creation and .first is a property in Python Playwright.
+        price_link = page.get_by_role("link", name=re.compile("Price|Report|Market", re.IGNORECASE)).first
+        
         if await price_link.count() > 0:
             await price_link.click()
             await page.wait_for_load_state("networkidle")
