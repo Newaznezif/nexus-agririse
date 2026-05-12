@@ -91,8 +91,7 @@ export default function InsightsPage() {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <BrainCircuit size={28} className="text-emerald-600" />
-            <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white uppercase italic">
+            <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white uppercase">
               Market Intelligence
             </h1>
           </div>
