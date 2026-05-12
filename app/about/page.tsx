@@ -30,7 +30,7 @@ export default function AboutPage() {
             className="bg-emerald-600 h-[500px] rounded-[3rem] relative overflow-hidden group shadow-2xl"
           >
             <img
-              src="https://images.unsplash.com/photo-1590424753062-325177391f6e?q=80&w=2000&auto=format&fit=crop"
+              src="/Afri.png"
               className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-1000"
               alt="African agriculture"
             />
