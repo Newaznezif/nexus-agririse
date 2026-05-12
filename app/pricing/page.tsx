@@ -1,5 +1,4 @@
 import React from 'react';
-import { Navbar } from '@/components/Navbar';
 import { CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/Button';
 import Link from 'next/link';
@@ -51,8 +50,6 @@ export default function PricingPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-zinc-950">
-      <Navbar />
-      
       <div className="container mx-auto px-6 py-24">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
