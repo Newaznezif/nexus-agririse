@@ -31,10 +31,17 @@ async def generate_market_intelligence():
     
     try:
         # 1. Query the latest data from the unified_market_intel view
-        res = supabase.table("unified_market_intel").select("*").limit(20).execute()
-        market_data = res.data
+        print("Checking for data in 'unified_market_intel' view...")
+        try:
+            res = supabase.table("unified_market_intel").select("*").limit(20).execute()
+            market_data = res.data
+        except Exception as view_err:
+            print(f"CRITICAL ERROR: Could not find or read 'unified_market_intel' view. (Error: {view_err})")
+            print("Action Required: Please run 'harvester/recreate_view.sql' in your Supabase SQL Editor.")
+            return
+
         if not market_data:
-            print("No market data found for analysis.")
+            print("Status: Unified view exists but is currently empty. No analysis to perform.")
             return
             
         # 2. Assemble Context
