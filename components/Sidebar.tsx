@@ -14,7 +14,7 @@ export const Sidebar = () => {
   const { user, logout } = useAuth();
   
   // RESIZABLE LOGIC
-  const [width, setWidth] = useState(256); // 64 * 4 = 256px
+  const [width, setWidth] = useState(320); // Enlarged default
   const isResizing = useRef(false);
 
   const startResizing = useCallback(() => {
@@ -32,7 +32,7 @@ export const Sidebar = () => {
   const resize = useCallback((e: MouseEvent) => {
     if (!isResizing.current) return;
     const newWidth = e.clientX;
-    if (newWidth > 200 && newWidth < 450) {
+    if (newWidth > 280 && newWidth < 500) {
       setWidth(newWidth);
     }
   }, []);
@@ -68,21 +68,21 @@ export const Sidebar = () => {
       className="bg-white dark:bg-zinc-950 border-r border-gray-200 dark:border-zinc-800 hidden md:flex flex-col min-h-[calc(100vh-3.5rem)] shrink-0 relative transition-none group/sidebar"
     >
       {/* Brand */}
-      <div className="p-6 border-b border-gray-100 dark:border-zinc-800 flex-shrink-0">
-        <div className="flex items-center gap-2 mb-1 overflow-hidden">
-          <div className="w-9 h-9 bg-emerald-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-600/20">
-            <Leaf size={18} className="text-white" />
+      <div className="p-8 border-b border-gray-100 dark:border-zinc-800 flex-shrink-0">
+        <div className="flex items-center gap-3 mb-2 overflow-hidden">
+          <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-600/20">
+            <Leaf size={20} className="text-white" />
           </div>
-          <h2 className="font-black text-xl text-gray-900 dark:text-white truncate tracking-tighter">Nexus AgriRise</h2>
+          <h2 className="font-black text-2xl text-gray-900 dark:text-white truncate tracking-tighter">Nexus AgriRise</h2>
         </div>
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-11 truncate">AI Intelligence Platform</p>
+        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest ml-14 truncate">AI Intelligence Platform</p>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-4 space-y-8 overflow-y-auto custom-scrollbar">
+      <nav className="flex-1 p-6 space-y-10 overflow-y-auto custom-scrollbar">
         {['Main', 'Intelligence', 'System'].map(category => (
-          <div key={category} className="space-y-1">
-            <p className="text-xs font-black text-gray-400 dark:text-zinc-600 uppercase tracking-[0.2em] px-3 mb-4">
+          <div key={category} className="space-y-2">
+            <p className="text-sm font-black text-gray-400 dark:text-zinc-600 uppercase tracking-[0.2em] px-4 mb-5">
               {category}
             </p>
             {menuItems.filter(item => item.category === category).map((item) => {
@@ -92,16 +92,16 @@ export const Sidebar = () => {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base transition-all duration-200 group/item ${
+                  className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-lg transition-all duration-200 group/item ${
                     isActive
-                      ? 'bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-600/30 scale-[1.02]'
+                      ? 'bg-emerald-600 text-white font-bold shadow-xl shadow-emerald-600/30 scale-[1.02]'
                       : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-900 hover:text-gray-900 dark:hover:text-white font-semibold'
                   }`}
                 >
-                  <Icon size={20} className={`${isActive ? 'text-white' : 'text-gray-400 dark:text-zinc-600 group-hover/item:text-emerald-500'} transition-colors flex-shrink-0`} />
+                  <Icon size={22} className={`${isActive ? 'text-white' : 'text-gray-400 dark:text-zinc-600 group-hover/item:text-emerald-500'} transition-colors flex-shrink-0`} />
                   <span className="truncate">{item.name}</span>
                   {isActive && (
-                    <div className="ml-auto w-1.5 h-5 rounded-full bg-white/40" />
+                    <div className="ml-auto w-2 h-6 rounded-full bg-white/40" />
                   )}
                 </Link>
               );
@@ -111,28 +111,29 @@ export const Sidebar = () => {
       </nav>
 
       {/* User Info & Footer */}
-      <div className="p-4 bg-gray-50 dark:bg-zinc-900/50 border-t border-gray-100 dark:border-zinc-800 flex-shrink-0">
+      <div className="p-6 bg-gray-50 dark:bg-zinc-900/50 border-t border-gray-100 dark:border-zinc-800 flex-shrink-0">
         {user && (
-          <div className="mb-4 px-3 py-3 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 font-black text-sm">
+          <div className="mb-5 px-4 py-4 bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-gray-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+            <div className="flex items-center gap-4 mb-1">
+              <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 font-black text-lg">
                 {user.email?.[0].toUpperCase()}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-black text-gray-900 dark:text-white truncate">{user.email?.split('@')[0]}</p>
-                <p className="text-xs text-emerald-600 dark:text-emerald-500 font-bold uppercase tracking-wider">Authorized</p>
+                <p className="text-base font-black text-gray-900 dark:text-white truncate">{user.email?.split('@')[0]}</p>
+                <p className="text-sm text-emerald-600 dark:text-emerald-500 font-bold uppercase tracking-wider">Authorized</p>
               </div>
             </div>
           </div>
         )}
         <button
           onClick={logout}
-          className="w-full flex items-center gap-3 px-4 py-4 rounded-xl text-sm font-black uppercase tracking-widest text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all border border-transparent hover:border-red-200 dark:hover:border-red-900/30"
+          className="w-full flex items-center gap-4 px-5 py-5 rounded-2xl text-base font-black uppercase tracking-widest text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all border border-transparent hover:border-red-200 dark:hover:border-red-900/30"
         >
-          <LogOut size={20} />
+          <LogOut size={22} />
           Sign Out
         </button>
       </div>
+
 
 
       {/* ── RESIZE HANDLE ── */}
