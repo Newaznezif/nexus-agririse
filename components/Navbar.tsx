@@ -43,6 +43,7 @@ export const Navbar = () => {
     { href: '/services', label: 'Services' },
     { href: '/#insights', label: 'Insights' },
     { href: '/testimonial', label: 'Testimonial' },
+    { href: '/#pricing', label: 'Pricing' },
     { href: '/#contact', label: 'Contact' },
   ];
 
@@ -53,7 +54,7 @@ export const Navbar = () => {
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-white/80 dark:bg-black/80 backdrop-blur-md border-gray-100 dark:border-zinc-800">
-      <div className="container mx-auto flex h-16 items-center px-6 justify-between">
+      <div className="container mx-auto flex h-32 items-center px-6 justify-between">
         {/* Logo */}
         <div className="flex items-center">
           <Link href="/" className="mr-8 flex items-center space-x-2">
