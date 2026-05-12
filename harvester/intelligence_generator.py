@@ -27,6 +27,7 @@ client = genai.Client(api_key=GOOGLE_API_KEY, http_options={'api_version': 'v1'}
 MODEL_ID = "gemini-1.5-flash"
 
 async def generate_market_intelligence():
+    print(f"Using Google API Version: {client.http_options['api_version']}")
     print(f"Generating AI Market Intelligence (Modernized)... Model: {MODEL_ID}")
     
     try:
@@ -40,8 +41,11 @@ async def generate_market_intelligence():
             print("Action Required: Please run 'harvester/recreate_view.sql' in your Supabase SQL Editor.")
             return
 
-        if not market_data:
-            print("No market data available for analysis today. Stopping gracefully.")
+        # Refined Check: Ensure we have real data (Price > 0)
+        has_real_data = any(float(row.get('price', 0)) > 0 for row in market_data) if market_data else False
+
+        if not market_data or not has_real_data:
+            print("Awaiting real market data harvest... skipping AI generation.")
             return
             
         # 2. Assemble Context
