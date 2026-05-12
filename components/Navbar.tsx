@@ -58,11 +58,11 @@ export const Navbar = () => {
       <div className="container mx-auto flex h-32 items-center px-6 justify-between">
         {/* Logo */}
         <div className="flex items-center">
-          <Link href="/" className="mr-8 flex items-center space-x-4">
+          <Link href="/" className="-ml-2 mr-8 flex items-center space-x-4">
             <img 
               src="/Logo.jpeg" 
               alt="Nexus AgriRise Logo" 
-              className="w-16 h-16 rounded-full object-cover shadow-sm border border-gray-100 dark:border-zinc-800"
+              className="w-20 h-20 rounded-full object-cover shadow-md border border-emerald-100 dark:border-emerald-900/30"
             />
             <span className="font-bold text-2xl tracking-tight text-emerald-700 dark:text-emerald-500">
               Nexus AgriRise
