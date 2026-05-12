@@ -54,27 +54,15 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-white/80 dark:bg-black/80 backdrop-blur-md border-gray-100 dark:border-zinc-800 relative">
-      {/* Absolute Logo placement on the far left of the viewport */}
-      <div className="absolute left-6 xl:left-10 top-1/2 -translate-y-1/2 z-50 hidden md:block">
-        <Link href="/">
-          <img 
-            src="/Logo.jpeg" 
-            alt="Nexus AgriRise Logo" 
-            className="w-24 h-24 rounded-full object-cover shadow-lg border-2 border-white dark:border-zinc-900"
-          />
-        </Link>
-      </div>
-
+    <nav className="sticky top-0 z-50 w-full border-b bg-white/80 dark:bg-black/80 backdrop-blur-md border-gray-100 dark:border-zinc-800">
       <div className="container mx-auto flex h-32 items-center px-6 justify-between">
-        {/* Brand Text */}
+        {/* Brand Text & Logo */}
         <div className="flex items-center">
-          <Link href="/" className="mr-8 flex items-center md:pl-4">
-            {/* Mobile Logo */}
+          <Link href="/" className="mr-8 flex items-center space-x-4">
             <img 
               src="/Logo.jpeg" 
               alt="Nexus AgriRise Logo" 
-              className="w-12 h-12 rounded-full object-cover shadow-sm border border-emerald-100 dark:border-emerald-900/30 mr-3 md:hidden"
+              className="w-24 h-24 rounded-full object-cover shadow-lg border-2 border-white dark:border-zinc-900"
             />
             <span className="font-bold text-2xl tracking-tight text-emerald-700 dark:text-emerald-500">
               Nexus AgriRise
