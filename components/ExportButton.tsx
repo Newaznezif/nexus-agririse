@@ -22,8 +22,8 @@ export const ExportButton = ({ dataset, insight }: ExportButtonProps) => {
     try {
       // Small delay to show loading state
       await new Promise((resolve) => setTimeout(resolve, 800));
-      const generatorName = user?.email || 'Authorized User';
-      generatePDFReport(dataset, insight, generatorName);
+      const generatorName = 'Nexus AgriRise';
+      await generatePDFReport(dataset, insight, generatorName);
     } catch (error) {
       console.error('Failed to generate PDF:', error);
       alert('Failed to generate PDF report.');

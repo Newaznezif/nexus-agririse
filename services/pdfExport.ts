@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { Dataset, Insight } from '@/types';
 import { formatDateTime } from '@/utils/formatDate';
 
-export const generatePDFReport = (dataset: Dataset, insight: Insight, generatorName: string = 'Authorized User') => {
+export const generatePDFReport = async (dataset: Dataset, insight: Insight, generatorName: string = 'Nexus AgriRise') => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -20,6 +20,25 @@ export const generatePDFReport = (dataset: Dataset, insight: Insight, generatorN
     doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
   };
 
+  // --- HELPER: Load Image as Base64 ---
+  const getBase64Image = (url: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.setAttribute('crossOrigin', 'anonymous');
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0);
+        const dataURL = canvas.toDataURL('image/jpeg');
+        resolve(dataURL);
+      };
+      img.onerror = (error) => reject(error);
+      img.src = url;
+    });
+  };
+
   // --- PAGE 1: COVER PAGE ---
   drawPageBorder();
   
@@ -28,19 +47,30 @@ export const generatePDFReport = (dataset: Dataset, insight: Insight, generatorN
   doc.rect(0, 0, pageWidth, 60, 'F');
   
   // Logo & Title
+  try {
+    const logoData = await getBase64Image('/Logo.jpeg');
+    doc.addImage(logoData, 'JPEG', margin, 12, 20, 20);
+  } catch (e) {
+    // Fallback if logo fails
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(24);
+    doc.text('NEXUS', margin, 28);
+  }
+  
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(32);
-  doc.text('NEXUS', margin, 35);
+  doc.setFontSize(16);
+  doc.text('NEXUS AGRIRISE', margin + 25, 25);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(12);
-  doc.text('AGRIRISE AFRICA INTELLIGENCE', margin, 42);
+  doc.setFontSize(10);
+  doc.text('AFRICA INTELLIGENCE SYSTEM', margin + 25, 31);
   
   // Report Identity
   doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
   doc.setFontSize(48);
   doc.setFont('helvetica', 'bold');
-  doc.text('Market Intelligence', margin, 110);
+  doc.text('Intelligence Stream', margin, 110);
   doc.text('Analysis Report', margin, 130);
   
   doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -51,19 +81,19 @@ export const generatePDFReport = (dataset: Dataset, insight: Insight, generatorN
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
   doc.text(`Reference: NX-${insight.id.substring(0, 8).toUpperCase()}`, margin, 160);
-  doc.text(`Dataset: ${dataset.name}`, margin, 168);
-  doc.text(`Region: ${dataset.country || 'Pan-African'}`, margin, 176);
+  doc.text(`Source Stream: ${dataset.name}`, margin, 168);
+  doc.text(`Market Region: ${dataset.country || 'Pan-African'}`, margin, 176);
   
   // Prepared For/By
   doc.setFillColor(249, 250, 251);
   doc.rect(margin, 210, pageWidth - (margin * 2), 40, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('PREPARED BY', margin + 10, 222);
+  doc.text('AUTHORIZED BY', margin + 10, 222);
   doc.text('GENERATION DATE', pageWidth / 2, 222);
   
   doc.setFont('helvetica', 'normal');
-  doc.text(generatorName.toUpperCase(), margin + 10, 232);
+  doc.text('NEXUS AGRIRISE SYSTEM', margin + 10, 232);
   doc.text(formatDateTime(new Date().toISOString()), pageWidth / 2, 232);
 
   // Footer Branding
@@ -93,11 +123,11 @@ export const generatePDFReport = (dataset: Dataset, insight: Insight, generatorN
   // Risk Assessment Table
   autoTable(doc, {
     startY: cursorY,
-    head: [['Assessment Metric', 'Analysis Details', 'Status']],
+    head: [['Intelligence Metric', 'Analysis Details', 'Status']],
     body: [
-      ['Risk Profile', `The AI identifies a ${insight.risk_level.toUpperCase()} risk level for this sector.`, insight.risk_level.toUpperCase()],
+      ['Risk Profile', `The AI identifies a ${insight.risk_level.toUpperCase()} risk level for this stream.`, insight.risk_level.toUpperCase()],
       ['Market Direction', `Primary price trend is currently ${insight.trend.toLowerCase()}.`, 'ACTIVE'],
-      ['Opportunity Index', (insight as any).cross_border_opportunity ? 'High' : 'Neutral', 'VALIDATED']
+      ['Impact Analysis', (insight as any).cross_border_opportunity ? 'Significant' : 'Moderate', 'VERIFIED']
     ],
     theme: 'grid',
     headStyles: { fillColor: primaryColor, fontSize: 10, halign: 'center' },
@@ -109,7 +139,7 @@ export const generatePDFReport = (dataset: Dataset, insight: Insight, generatorN
   // Analytical Charts
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text('2.0 Data Visualizations', margin, cursorY);
+  doc.text('2.0 Real-Time Data Visualization', margin, cursorY);
   cursorY += 15;
 
   // Histogram (Stylized)
