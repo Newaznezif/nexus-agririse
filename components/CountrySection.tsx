@@ -76,15 +76,6 @@ export const CountrySection = ({ insight, dataset, generatorName }: CountrySecti
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 bg-black/20 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
-          <div className="text-right">
-            <p className="text-[10px] text-emerald-100/50 uppercase font-bold">Authorized By</p>
-            <p className="text-sm font-bold text-white">{generatorName}</p>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-            <UserIcon size={18} className="text-white" />
-          </div>
-        </div>
       </div>
 
       {/* ── METADATA BAR ── */}
