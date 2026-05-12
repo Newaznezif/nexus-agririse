@@ -39,7 +39,7 @@ export const Navbar = () => {
 
   const links = [
     { href: '/', label: 'Home' },
-    { href: '/dashboard', label: 'Dashboard' },
+    ...(!user ? [{ href: '/dashboard', label: 'Get Start here' }] : []),
     { href: '/about', label: 'About' },
     { href: '/services', label: 'Services' },
     { href: '/#insights', label: 'Insights' },
