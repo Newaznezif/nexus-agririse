@@ -5,6 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { AuthProvider } from "@/hooks/useAuth";
 import { DemoModeProvider } from "@/context/DemoModeContext";
 import { Toaster } from "react-hot-toast";
+import { ChatAssistant } from "@/components/ChatAssistant";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -36,6 +37,7 @@ export default function RootLayout({
             <main className="flex-1">
               {children}
             </main>
+            <ChatAssistant />
           </AuthProvider>
         </DemoModeProvider>
       </body>

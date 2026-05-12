@@ -1,0 +1,171 @@
+"use client";
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MessageCircle, X, Send, Bot, User, Sparkles } from 'lucide-react';
+
+interface Message {
+  id: string;
+  text: string;
+  sender: 'bot' | 'user';
+  timestamp: Date;
+}
+
+export const ChatAssistant = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      text: "Hello! I am NEXUS ASSISTANT. How can I help you with African Agribusiness intelligence today?",
+      sender: 'bot',
+      timestamp: new Date(),
+    }
+  ]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Show on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 400) {
+        setIsVisible(true);
+      } else if (!isOpen) {
+        setIsVisible(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isOpen]);
+
+  // Auto scroll to bottom
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, isOpen]);
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      text: input,
+      sender: 'user',
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+
+    // Mock Bot Response
+    setTimeout(() => {
+      const botMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        text: getBotResponse(input),
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, botMsg]);
+    }, 1000);
+  };
+
+  const getBotResponse = (query: string) => {
+    const q = query.toLowerCase();
+    if (q.includes('price') || q.includes('market')) return "I can help you track commodity prices across Ethiopia, Rwanda, and CAR. Which market are you interested in?";
+    if (q.includes('risk') || q.includes('climate')) return "Our AI analyzes climate and supply chain risks in real-time. You can see detailed risk badges on the Dashboard.";
+    if (q.includes('contact') || q.includes('help')) return "You can reach our team at arusha@agririse.africa or via the Contact page.";
+    return "That's a great question about African agriculture! I'm NEXUS ASSISTANT, and I'm here to provide data-driven insights. Could you tell me more?";
+  };
+
+  return (
+    <>
+      {/* Floating Toggle Button */}
+      <AnimatePresence>
+        {isVisible && (
+          <motion.button
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setIsOpen(!isOpen)}
+            className="fixed bottom-8 right-8 z-[60] w-16 h-16 bg-emerald-600 text-white rounded-full shadow-2xl flex items-center justify-center border-4 border-white dark:border-zinc-900 overflow-hidden group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-tr from-emerald-600 to-teal-400 group-hover:rotate-12 transition-transform duration-500" />
+            {isOpen ? <X className="relative z-10 w-8 h-8" /> : <MessageCircle className="relative z-10 w-8 h-8" />}
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Chat Window */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ y: 100, opacity: 0, scale: 0.9 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 100, opacity: 0, scale: 0.9 }}
+            className="fixed bottom-28 right-8 z-[60] w-[90vw] md:w-[400px] h-[500px] bg-white dark:bg-zinc-900 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-gray-100 dark:border-zinc-800 flex flex-col overflow-hidden"
+          >
+            {/* Header */}
+            <div className="bg-emerald-600 p-6 flex items-center justify-between">
+              <div className="flex items-center gap-3 text-white">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
+                  <Sparkles size={20} className="text-emerald-100" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm uppercase tracking-widest">NEXUS ASSISTANT</h3>
+                  <p className="text-[10px] text-emerald-100 opacity-80 uppercase font-bold">Online | AI Powered</p>
+                </div>
+              </div>
+              <button onClick={() => setIsOpen(false)} className="text-white/80 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Messages Area */}
+            <div 
+              ref={scrollRef}
+              className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/50 dark:bg-black/20"
+            >
+              {messages.map((msg) => (
+                <div 
+                  key={msg.id} 
+                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div className={`max-w-[80%] p-4 rounded-2xl text-sm ${
+                    msg.sender === 'user' 
+                      ? 'bg-emerald-600 text-white rounded-tr-none shadow-lg' 
+                      : 'bg-white dark:bg-zinc-800 text-gray-800 dark:text-gray-200 rounded-tl-none border border-gray-100 dark:border-zinc-700 shadow-sm'
+                  }`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Input Area */}
+            <div className="p-4 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800">
+              <div className="relative flex items-center">
+                <input 
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder="Ask NEXUS anything..."
+                  className="w-full bg-gray-100 dark:bg-zinc-800 rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm"
+                />
+                <button 
+                  onClick={handleSend}
+                  className="absolute right-2 p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-lg"
+                >
+                  <Send size={16} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
