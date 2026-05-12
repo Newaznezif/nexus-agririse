@@ -75,43 +75,54 @@ export const ChatAssistant = () => {
     
     // SPECIFIC PEOPLE (High Priority)
     if (q.includes('newaz')) {
-      return "Newaz Nezif Abagero is our Co-Founder & Lead AI Architect. He is an Addis Ababa-based Cybersecurity Analyst and Full-Stack Developer who builds the secure, scalable AI foundations of Nexus AgriRise.";
+      return "Newaz Nezif Abagero is our Co-Founder & Lead AI Architect. Based in Addis Ababa, he is a Cybersecurity Analyst at FDRE INSA and a Full-Stack Developer (10 Academy Mastery Graduate). He builds our secure API integrations and AI foundations using Python, PyTorch, and TensorFlow.";
     }
     if (q.includes('augustin')) {
-      return "Augustin Nkundimana is our Founder & CEO. He is a Kigali-based Agritech Engineer and Mandela Washington Fellow specializing in precision agriculture and AI-driven food security solutions.";
+      return "Augustin Nkundimana is our Founder & CEO. He is a Kigali-based Agritech Engineer, AI Entrepreneur, and 2025 Mandela Washington Fellow. He specializes in precision agriculture and has developed solutions like offline crop disease detection and tractor-sharing marketplaces.";
     }
 
-    // HOW TO USE / STARTING (with typo handling)
-    if (q.includes('how to use') || q.includes('how can i use') || q.includes('how can i sue') || q.includes('get started') || q.includes('start')) {
-      return "To use Nexus AgriRise: 1. Click 'Get Start here' to sign up. 2. Explore the Dashboard for live market data. 3. Use AI Insights to predict trends. 4. Visit the Services page for supply chain tools. It's designed to be intuitive for all agribusiness users!";
+    // HOW TO USE / STARTING / STEPS
+    if (q.includes('how to use') || q.includes('how can i use') || q.includes('how can i sue') || q.includes('get started') || q.includes('start') || q.includes('steps')) {
+      return "You can use Nexus AgriRise in 4 easy steps: 1. COLLECT (we aggregate real-time data), 2. ANALYZE (our Gemini AI processes the data), 3. VISUALIZE (you view interactive maps and charts), and 4. ACT (you make strategic decisions). Click 'Get Start here' to begin!";
     }
 
-    // WHAT IS IN IT / FEATURES
-    if (q.includes('what is in it') || q.includes('features') || q.includes('what do you do') || q.includes('capabilities')) {
-      return "Nexus AgriRise features: 📊 Real-time commodity tracking, 🛡️ Climate risk scoring, 🧠 Generative AI insights, 📉 Arbitrage alerts, and 📄 Professional intelligence reports for African markets.";
+    // WHAT IS IN IT / FEATURES / CAPABILITIES
+    if (q.includes('what is in it') || q.includes('features') || q.includes('what do you do') || q.includes('capabilities') || q.includes('engine')) {
+      return "The platform features: 📊 Real-time commodity tracking, 🛡️ Climate risk scoring, 🧠 Gemini AI Engine, 📉 Arbitrage alerts, and 📄 Exportable reports. We are YALI affiliated and Supabase secured, providing open-source intelligence for African growth.";
+    }
+
+    // STATS / NUMBERS
+    if (q.includes('markets') || q.includes('countries') || q.includes('covered') || q.includes('stats') || q.includes('numbers')) {
+      return "Current Stats: 🌍 14+ African Markets Covered, 💡 4 AI Insight Categories, ⚡ < 30s Average Analysis Time, and 🔒 100% Data Privacy Guaranteed.";
+    }
+
+    // SPECIFIC MARKET INSIGHTS
+    if (q.includes('ethiopia') || q.includes('coffee')) {
+      return "In Ethiopia, we track Yirgacheffe Grade 1 Coffee, which commands 40–65% premiums. We help improve farmer income retention through direct-trade route insights.";
+    }
+    if (q.includes('rwanda') || q.includes('beans')) {
+      return "In Rwanda, we track Bean prices, which are stable at USD 920/MT. We highlight opportunities for EU organic certification in the Northern Province.";
+    }
+    if (q.includes('car') || q.includes('maize')) {
+      return "In the Central African Republic (CAR), we track Maize supply gaps (~180K MT) and identify cross-border arbitrage opportunities to stabilize local prices.";
+    }
+
+    // MOTTO / VISION / MISSION
+    if (q.includes('motto') || q.includes('quote') || q.includes('vision') || q.includes('mission')) {
+      return "Our motto is: 'Africa does not lack food, it lacks intelligence in its food systems.' Our mission is to build the digital infrastructure for African agriculture through visionary AI.";
     }
 
     // PRICING
-    if (q.includes('price') || q.includes('cost') || q.includes('pricing')) {
-      return "We offer three plans: Starter (Free), Professional ($49/mo), and Enterprise (Custom). You can see the full comparison on our Pricing page!";
+    if (q.includes('price') || q.includes('cost') || q.includes('pricing') || q.includes('free')) {
+      return "We have 3 plans: 1. Starter (Free) for individuals, 2. Professional ($49/mo) for mid-sized agribusinesses, and 3. Enterprise (Custom) for large-scale operations. See the Pricing page for features!";
     }
 
-    // MARKET DATA
-    if (q.includes('market') || q.includes('data') || q.includes('commodity')) {
-      return "We track markets across Ethiopia, Rwanda, and CAR, focusing on commodities like Coffee, Maize, and Wheat. All data is updated in real-time on the Dashboard.";
+    // CONTACT / REACH OUT
+    if (q.includes('contact') || q.includes('support') || q.includes('email') || q.includes('phone') || q.includes('address')) {
+      return "Reach us at arusha@agririse.africa, call +251 900 000 000, or visit our headquarters in Addis Ababa, Ethiopia. You can also use the Contact form on our website.";
     }
 
-    // CONTACT / HELP
-    if (q.includes('contact') || q.includes('support') || q.includes('help') || q.includes('reach')) {
-      return "Need help? You can reach us at arusha@agririse.africa or visit our Contact page to send us a direct message.";
-    }
-
-    // ABOUT / MISSION / VISION
-    if (q.includes('about') || q.includes('mission') || q.includes('vision') || q.includes('purpose')) {
-      return "Our mission is to build the digital infrastructure for African agriculture, transforming complex data into actionable intelligence to solve food security challenges.";
-    }
-
-    return "I'm NEXUS ASSISTANT! I can tell you how to use the site, explain our features (like AI insights), or tell you about our team (Augustin and Newaz). What would you like to know?";
+    return "I'm NEXUS ASSISTANT! I have full knowledge of our platform's market data (Ethiopia, Rwanda, CAR), our AI engine (Gemini), our leadership (Augustin & Newaz), and how to get started. What can I help you with?";
   };
 
   return (
