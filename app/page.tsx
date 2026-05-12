@@ -1,6 +1,7 @@
 "use client";
 import { Button } from "@/components/Button";
 import { Counter } from '@/components/Counter';
+import { Footer } from '@/components/Footer';
 import { useRouter } from "next/navigation";
 import { AfricaMap } from "@/components/AfricaMap";
 import { motion } from "framer-motion";
@@ -459,9 +460,7 @@ export default function Home() {
       </section>
 
 
-      <footer className="py-10 border-t border-gray-100 dark:border-zinc-900 text-center text-sm text-gray-500">
-        <p>&copy; 2026 Nexus AgriRise Africa. All rights reserved.</p>
-      </footer>
+      <Footer />
     </div>
   );
 }

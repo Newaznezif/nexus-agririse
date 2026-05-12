@@ -3,6 +3,7 @@ import React from 'react';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/Button';
+import { Footer } from '@/components/Footer';
 
 export default function ContactPage() {
   const handleSubmit = (e: React.FormEvent) => {
@@ -128,9 +129,7 @@ export default function ContactPage() {
         </div>
       </section>
 
-      <footer className="py-12 border-t border-zinc-900 text-center text-sm text-zinc-500">
-        <p>&copy; 2026 Nexus AgriRise Africa. All rights reserved.</p>
-      </footer>
+      <Footer />
     </main>
   );
 }
