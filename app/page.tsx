@@ -456,47 +456,6 @@ export default function Home() {
       </section>
 
 
-      {/* ── CONTACT ── */}
-      <section id="contact" className="py-24 bg-zinc-950 text-white relative overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
-
-        <div className="container mx-auto px-6 relative z-10">
-          <div className="max-w-3xl mx-auto text-center mb-20">
-            <h2 className="text-5xl font-black mb-6 tracking-tight">
-              Get in <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-blue-500">Touch</span>
-            </h2>
-            <p className="text-xl text-gray-400 leading-relaxed">
-              Ready to scale your agribusiness operations? Our team is here to help you unlock the power of data-driven intelligence.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {[
-              { icon: <Mail size={32} />, title: "Email Us", detail: "arusha@agririse.africa" },
-              { icon: <Phone size={32} />, title: "Call Us", detail: "+251 900 000 000" },
-              { icon: <MapPin size={32} />, title: "Headquarters", detail: "Addis Ababa, Ethiopia", sub: "Global reach" },
-            ].map((card) => (
-              <motion.div
-                key={card.title}
-                whileHover={{ y: -10 }}
-                className="flex flex-col items-center justify-center p-10 bg-zinc-900/50 backdrop-blur-sm rounded-[2.5rem] border border-zinc-800 hover:border-emerald-500/30 transition-colors shadow-2xl relative overflow-hidden group"
-              >
-                <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="w-16 h-16 bg-zinc-800 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 shadow-inner relative z-10">
-                  {card.icon}
-                </div>
-                <h3 className="text-xl font-bold mb-2 relative z-10">{card.title}</h3>
-                <p className="text-gray-400 font-medium text-center relative z-10">
-                  {card.detail}
-                  {card.sub && <><br /><span className="text-sm text-zinc-500">{card.sub}</span></>}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <footer className="py-10 border-t border-gray-100 dark:border-zinc-900 text-center text-sm text-gray-500">
         <p>&copy; 2026 Nexus AgriRise Africa. All rights reserved.</p>
       </footer>

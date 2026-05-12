@@ -45,7 +45,7 @@ export const Navbar = () => {
     { href: '/#insights', label: 'Insights' },
     { href: '/testimonial', label: 'Testimonial' },
     { href: '/pricing', label: 'Pricing' },
-    { href: '/#contact', label: 'Contact' },
+    { href: '/contact', label: 'Contact' },
   ];
 
   const isActive = (href: string) => {
