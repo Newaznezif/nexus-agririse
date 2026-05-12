@@ -100,13 +100,6 @@ export default function InsightsPage() {
             Strategic split-pane dashboard for pan-African agribusiness oversight
           </p>
         </div>
-        
-        <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-2 rounded-2xl border border-emerald-100 dark:border-emerald-900/50">
-          <Activity size={18} className="text-emerald-600 animate-pulse" />
-          <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">
-            Live Stream Active
-          </span>
-        </div>
       </header>
 
       {/* ── MAIN CONTENT (SIDEBAR + DASHBOARD) ── */}
