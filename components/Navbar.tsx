@@ -58,7 +58,7 @@ export const Navbar = () => {
         {/* Logo */}
         <div className="flex items-center">
           <Link href="/" className="mr-8 flex items-center space-x-2">
-            <span className="font-bold text-xl tracking-tight text-emerald-700 dark:text-emerald-500">
+            <span className="font-bold text-2xl tracking-tight text-emerald-700 dark:text-emerald-500">
               Nexus AgriRise
             </span>
           </Link>
@@ -68,7 +68,7 @@ export const Navbar = () => {
               <Link
                 key={link.label}
                 href={link.href}
-                className={`text-sm transition-colors hover:text-emerald-600 dark:hover:text-emerald-400 ${
+                className={`text-base transition-colors hover:text-emerald-600 dark:hover:text-emerald-400 ${
                   isActive(link.href)
                     ? 'text-emerald-600 dark:text-emerald-500 font-semibold'
                     : 'text-gray-500 dark:text-gray-400 font-medium'
@@ -89,16 +89,16 @@ export const Navbar = () => {
             className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors text-gray-500 dark:text-gray-400"
             aria-label="Toggle theme"
           >
-            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            {theme === 'light' ? <Moon size={22} /> : <Sun size={22} />}
           </button>
 
           {!loading && (
             <div className="hidden sm:block">
               {user ? (
-                <Button variant="secondary" onClick={logout} label="Logout" className="text-sm px-5 py-2 h-auto rounded-full" />
+                <Button variant="secondary" onClick={logout} label="Logout" className="text-base px-6 py-2.5 h-auto rounded-full" />
               ) : (
                 <Link href="/login">
-                  <Button label="Login / Sign Up" className="text-sm px-5 py-2 h-auto rounded-full shadow-lg shadow-emerald-500/20" />
+                  <Button label="Login / Sign Up" className="text-base px-6 py-2.5 h-auto rounded-full shadow-lg shadow-emerald-500/20" />
                 </Link>
               )}
             </div>
@@ -110,7 +110,7 @@ export const Navbar = () => {
             className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors text-gray-600 dark:text-gray-300"
             aria-label="Toggle menu"
           >
-            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+            {mobileOpen ? <X size={26} /> : <Menu size={26} />}
           </button>
         </div>
       </div>
@@ -123,7 +123,7 @@ export const Navbar = () => {
               <Link
                 key={link.label}
                 href={link.href}
-                className={`px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                className={`px-4 py-3 rounded-xl text-base font-medium transition-colors ${
                   isActive(link.href)
                     ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-900'
@@ -132,6 +132,7 @@ export const Navbar = () => {
                 {link.label}
               </Link>
             ))}
+
             {/* Auth button in mobile */}
             {!loading && (
               <div className="pt-3 border-t border-gray-100 dark:border-zinc-800 mt-2">
