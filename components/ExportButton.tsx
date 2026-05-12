@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { FileDown, Loader2 } from 'lucide-react';
 import { generatePDFReport } from '@/services/pdfExport';
 import { Dataset, Insight } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ExportButtonProps {
   dataset: Dataset | null;
@@ -11,6 +12,7 @@ interface ExportButtonProps {
 }
 
 export const ExportButton = ({ dataset, insight }: ExportButtonProps) => {
+  const { user } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleExport = async () => {
@@ -20,7 +22,8 @@ export const ExportButton = ({ dataset, insight }: ExportButtonProps) => {
     try {
       // Small delay to show loading state
       await new Promise((resolve) => setTimeout(resolve, 800));
-      generatePDFReport(dataset, insight);
+      const generatorName = user?.email || 'Authorized User';
+      generatePDFReport(dataset, insight, generatorName);
     } catch (error) {
       console.error('Failed to generate PDF:', error);
       alert('Failed to generate PDF report.');
