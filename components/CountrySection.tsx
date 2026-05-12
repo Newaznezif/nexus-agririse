@@ -59,7 +59,7 @@ export const CountrySection = ({ insight, dataset, generatorName }: CountrySecti
     ];
   };
 
-  const authCode = `NX-AUTH-${Buffer.from(insight.id).substring(0, 12).toString('base64').toUpperCase()}`;
+  const authCode = `NX-AUTH-${Buffer.from(insight.id).toString('base64').substring(0, 16).toUpperCase()}`;
 
   return (
     <div className="bg-white dark:bg-zinc-950 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700">
