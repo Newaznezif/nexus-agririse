@@ -6,7 +6,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   LayoutDashboard, Upload, BrainCircuit, BarChart3,
   Settings, Globe2, LogOut, Leaf, CloudRain, 
-  TrendingUp, Map, History, ShieldAlert
+  TrendingUp, Map, History, ShieldAlert,
+  Menu, X
 } from 'lucide-react';
 
 export const Sidebar = () => {
