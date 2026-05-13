@@ -121,7 +121,7 @@ export default function Home() {
     <div className="flex flex-col bg-white dark:bg-black overflow-x-hidden">
 
       {/* ── HERO ── */}
-      <section className="relative min-h-[85vh] flex flex-col justify-start pt-16 pb-10 px-4 lg:px-6 xl:px-10 overflow-hidden">
+      <section className="relative min-h-[85vh] flex flex-col justify-start pt-16 pb-10 px-8 lg:px-12 xl:px-20 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-[120px] animate-pulse" />
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-[120px] animate-pulse delay-1000" />
@@ -132,7 +132,7 @@ export default function Home() {
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-left lg:-ml-4 xl:-ml-10"
+            className="text-left"
           >
             <span className="inline-block px-4 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-sm font-semibold mb-6">
               A Nexus Partnership with AGRIC AI
