@@ -13,6 +13,8 @@ export const Sidebar = () => {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   
+  const [isOpen, setIsOpen] = useState(false);
+  
   // RESIZABLE LOGIC
   const [width, setWidth] = useState(320); // Enlarged default
   const isResizing = useRef(false);
@@ -46,6 +48,11 @@ export const Sidebar = () => {
     };
   }, [resize, stopResizing]);
 
+  // Close sidebar on route change on mobile
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
   const menuItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, category: 'Main' },
     { name: 'Upload Dataset', href: '/dashboard/upload', icon: Upload, category: 'Main' },
@@ -63,84 +70,107 @@ export const Sidebar = () => {
   ];
 
   return (
-    <aside 
-      style={{ width: `${width}px` }}
-      className="bg-white dark:bg-zinc-950 border-r border-gray-200 dark:border-zinc-800 hidden md:flex flex-col min-h-[calc(100vh-3.5rem)] shrink-0 relative transition-none group/sidebar"
-    >
-      {/* Brand */}
-      <div className="p-8 border-b border-gray-100 dark:border-zinc-800 flex-shrink-0">
-        <div className="flex items-center gap-3 mb-2 overflow-hidden">
-          <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-600/20">
-            <Leaf size={20} className="text-white" />
+    <>
+      {/* Mobile Toggle Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed bottom-6 right-6 z-[60] lg:hidden w-14 h-14 bg-emerald-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+      >
+        {isOpen ? <X size={28} /> : <Menu size={28} />}
+      </button>
+
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[50] lg:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      <aside 
+        style={{ width: `${width}px` }}
+        className={`
+          fixed inset-y-0 left-0 z-[55] lg:relative lg:flex flex-col 
+          bg-white dark:bg-zinc-950 border-r border-gray-200 dark:border-zinc-800 
+          min-h-screen lg:min-h-[calc(100vh-3.5rem)] shrink-0 
+          transition-transform duration-300 lg:transition-none 
+          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          group/sidebar
+        `}
+      >
+        {/* Brand */}
+        <div className="p-8 border-b border-gray-100 dark:border-zinc-800 flex-shrink-0">
+          <div className="flex items-center gap-3 mb-2 overflow-hidden">
+            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-600/20">
+              <Leaf size={20} className="text-white" />
+            </div>
+            <h2 className="font-black text-2xl text-gray-900 dark:text-white truncate tracking-tighter">Nexus AgriRise</h2>
           </div>
-          <h2 className="font-black text-2xl text-gray-900 dark:text-white truncate tracking-tighter">Nexus AgriRise</h2>
+          <p className="text-sm font-bold text-gray-400 uppercase tracking-widest ml-14 truncate">AI Intelligence Platform</p>
         </div>
-        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest ml-14 truncate">AI Intelligence Platform</p>
-      </div>
 
-      {/* Nav */}
-      <nav className="flex-1 p-6 space-y-10 overflow-y-auto custom-scrollbar">
-        {['Main', 'Intelligence', 'System'].map(category => (
-          <div key={category} className="space-y-2">
-            <p className="text-sm font-black text-gray-400 dark:text-zinc-600 uppercase tracking-[0.2em] px-4 mb-5">
-              {category}
-            </p>
-            {menuItems.filter(item => item.category === category).map((item) => {
-              const isActive = pathname === item.href;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-lg transition-all duration-200 group/item ${
-                    isActive
-                      ? 'bg-emerald-600 text-white font-bold shadow-xl shadow-emerald-600/30 scale-[1.02]'
-                      : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-900 hover:text-gray-900 dark:hover:text-white font-semibold'
-                  }`}
-                >
-                  <Icon size={22} className={`${isActive ? 'text-white' : 'text-gray-400 dark:text-zinc-600 group-hover/item:text-emerald-500'} transition-colors flex-shrink-0`} />
-                  <span className="truncate">{item.name}</span>
-                  {isActive && (
-                    <div className="ml-auto w-2 h-6 rounded-full bg-white/40" />
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        ))}
-      </nav>
+        {/* Nav */}
+        <nav className="flex-1 p-6 space-y-10 overflow-y-auto custom-scrollbar">
+          {['Main', 'Intelligence', 'System'].map(category => (
+            <div key={category} className="space-y-2">
+              <p className="text-sm font-black text-gray-400 dark:text-zinc-600 uppercase tracking-[0.2em] px-4 mb-5">
+                {category}
+              </p>
+              {menuItems.filter(item => item.category === category).map((item) => {
+                const isActive = pathname === item.href;
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-lg transition-all duration-200 group/item ${
+                      isActive
+                        ? 'bg-emerald-600 text-white font-bold shadow-xl shadow-emerald-600/30 scale-[1.02]'
+                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-900 hover:text-gray-900 dark:hover:text-white font-semibold'
+                    }`}
+                  >
+                    <Icon size={22} className={`${isActive ? 'text-white' : 'text-gray-400 dark:text-zinc-600 group-hover/item:text-emerald-500'} transition-colors flex-shrink-0`} />
+                    <span className="truncate">{item.name}</span>
+                    {isActive && (
+                      <div className="ml-auto w-2 h-6 rounded-full bg-white/40" />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
 
-      {/* User Info & Footer */}
-      <div className="p-6 bg-gray-50 dark:bg-zinc-900/50 border-t border-gray-100 dark:border-zinc-800 flex-shrink-0">
-        {user && (
-          <div className="mb-5 px-4 py-4 bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-gray-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-4 mb-1">
-              <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 font-black text-lg">
-                {user.email?.[0].toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <p className="text-base font-black text-gray-900 dark:text-white truncate">{user.email?.split('@')[0]}</p>
-                <p className="text-sm text-emerald-600 dark:text-emerald-500 font-bold uppercase tracking-wider">Authorized</p>
+        {/* User Info & Footer */}
+        <div className="p-6 bg-gray-50 dark:bg-zinc-900/50 border-t border-gray-100 dark:border-zinc-800 flex-shrink-0">
+          {user && (
+            <div className="mb-5 px-4 py-4 bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-gray-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-4 mb-1">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 font-black text-lg">
+                  {user.email?.[0].toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-base font-black text-gray-900 dark:text-white truncate">{user.email?.split('@')[0]}</p>
+                  <p className="text-sm text-emerald-600 dark:text-emerald-500 font-bold uppercase tracking-wider">Authorized</p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-        <button
-          onClick={logout}
-          className="w-full flex items-center gap-4 px-5 py-5 rounded-2xl text-base font-black uppercase tracking-widest text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all border border-transparent hover:border-red-200 dark:hover:border-red-900/30"
-        >
-          <LogOut size={22} />
-          Sign Out
-        </button>
-      </div>
+          )}
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-4 px-5 py-5 rounded-2xl text-base font-black uppercase tracking-widest text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all border border-transparent hover:border-red-200 dark:hover:border-red-900/30"
+          >
+            <LogOut size={22} />
+            Sign Out
+          </button>
+        </div>
 
-
-
-      {/* ── RESIZE HANDLE ── */}
-      <div
-        onMouseDown={startResizing}
-        className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 transition-colors z-50 group-hover/sidebar:opacity-100 opacity-0"
-      />
-    </aside>
+        {/* ── RESIZE HANDLE ── */}
+        <div
+          onMouseDown={startResizing}
+          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 transition-colors z-50 group-hover/sidebar:opacity-100 opacity-0 hidden lg:block"
+        />
+      </aside>
+    </>
   );
 };
