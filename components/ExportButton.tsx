@@ -21,13 +21,30 @@ export const ExportButton = ({ dataset, insight }: ExportButtonProps) => {
   const [selectedProfile, setSelectedProfile] = useState(AUTHORIZED_PROFILES[0]);
   const [showDropdown, setShowDropdown] = useState(false);
 
+  const [exportData, setExportData] = useState<{ blob: Blob; filename: string } | null>(null);
+
   const handleExport = async () => {
     if (!dataset || !insight) return;
+
+    // If we already have a generated PDF, trigger the download directly
+    if (exportData) {
+      const url = window.URL.createObjectURL(exportData.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', exportData.filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setExportData(null); // Reset after download
+      return;
+    }
 
     setIsGenerating(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 800));
-      await generatePDFReport(dataset, insight, selectedProfile.name, selectedProfile.role);
+      const data = await generatePDFReport(dataset, insight, selectedProfile.name, selectedProfile.role);
+      setExportData(data);
     } catch (error) {
       console.error('Failed to generate PDF:', error);
       alert('Failed to generate PDF report.');
@@ -44,8 +61,8 @@ export const ExportButton = ({ dataset, insight }: ExportButtonProps) => {
       <div className="relative">
         <button
           onClick={() => setShowDropdown(!showDropdown)}
-          disabled={isGenerating}
-          className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-200 rounded-l-xl border-r border-gray-300 dark:border-zinc-700 transition-all text-xs font-bold"
+          disabled={isGenerating || !!exportData}
+          className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-200 rounded-l-xl border-r border-gray-300 dark:border-zinc-700 transition-all text-xs font-bold disabled:opacity-50"
         >
           <UserCheck size={14} className="text-emerald-600" />
           <div className="text-left hidden sm:block">
@@ -91,12 +108,21 @@ export const ExportButton = ({ dataset, insight }: ExportButtonProps) => {
       <button
         onClick={handleExport}
         disabled={isGenerating}
-        className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-r-xl transition-all shadow-sm focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed text-xs font-black uppercase tracking-wider"
+        className={`flex items-center gap-2 px-5 py-2 rounded-r-xl transition-all shadow-sm focus:ring-2 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed text-xs font-black uppercase tracking-wider ${
+          exportData 
+            ? 'bg-blue-600 hover:bg-blue-700 text-white animate-pulse ring-2 ring-blue-400' 
+            : 'bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-emerald-500'
+        }`}
       >
         {isGenerating ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
             <span>Encrypting...</span>
+          </>
+        ) : exportData ? (
+          <>
+            <FileDown className="w-4 h-4" />
+            <span>Click to Save</span>
           </>
         ) : (
           <>
