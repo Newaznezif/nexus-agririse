@@ -184,7 +184,7 @@ export const generatePDFReport = async (
     body: metadata,
     theme: 'plain',
     styles: { fontSize: 8, cellPadding: 2 },
-    columnStyles: { 0: { fontStyle: 'bold', width: 40 } },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 } },
     margin: { left: margin }
   });
   cursorY = (doc as any).lastAutoTable.finalY + 20;
@@ -224,7 +224,7 @@ export const generatePDFReport = async (
       ['Impact Analysis', (insight as any).cross_border_opportunity ? 'Significant' : 'Moderate', 'VERIFIED']
     ],
     theme: 'grid',
-    headStyles: { fillColor: primaryColor, fontSize: 9 },
+    headStyles: { fillColor: primaryColor as [number, number, number], fontSize: 9 },
     styles: { fontSize: 8, cellPadding: 4 },
     margin: { left: margin, right: margin }
   });
@@ -246,7 +246,7 @@ export const generatePDFReport = async (
     head: [['Focus Area', 'Directive Statement']],
     body: recommendations.map(r => [r.title, r.desc]),
     theme: 'striped',
-    headStyles: { fillColor: [59, 130, 246] },
+    headStyles: { fillColor: [59, 130, 246] as [number, number, number] },
     styles: { fontSize: 8, cellPadding: 4 },
     margin: { left: margin, right: margin }
   });
