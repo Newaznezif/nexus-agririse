@@ -285,6 +285,6 @@ export const generatePDFReport = async (
   }
 
   const safeName = dataset.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-  const blob = doc.output('blob');
+  const blob = new Blob([doc.output('blob')], { type: 'application/pdf' });
   return { blob, filename: `Nexus_Intelligence_Report_${safeName}.pdf` };
 };

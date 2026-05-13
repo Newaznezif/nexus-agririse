@@ -28,15 +28,28 @@ export const ExportButton = ({ dataset, insight }: ExportButtonProps) => {
 
     // If we already have a generated PDF, trigger the download directly
     if (exportData) {
-      const url = window.URL.createObjectURL(exportData.blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', exportData.filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      setExportData(null); // Reset after download
+      try {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          const link = document.createElement('a');
+          link.href = base64data;
+          link.download = exportData.filename;
+          link.target = '_blank'; // Helpful for some mobile browsers
+          document.body.appendChild(link);
+          link.click();
+          setTimeout(() => {
+            document.body.removeChild(link);
+            setExportData(null);
+          }, 100);
+        };
+        reader.readAsDataURL(exportData.blob);
+      } catch (err) {
+        // Fallback to direct Blob URL if FileReader fails
+        const url = window.URL.createObjectURL(exportData.blob);
+        window.open(url, '_blank');
+        setExportData(null);
+      }
       return;
     }
 
