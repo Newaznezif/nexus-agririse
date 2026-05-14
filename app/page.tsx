@@ -18,7 +18,7 @@ import {
   UploadCloud,
   BarChart3,
   TrendingUp,
-  Users,
+  Radar,
   Database,
   ArrowRight,
   CheckCircle2,
@@ -77,10 +77,10 @@ export default function Home() {
   ];
 
   const steps = [
-    { num: "01", title: "Create an Account", desc: "Sign up in under 60 seconds. No credit card required.", icon: <Users size={20} /> },
-    { num: "02", title: "Upload Your Dataset", desc: "Drag-and-drop a CSV from any agribusiness source.", icon: <UploadCloud size={20} /> },
-    { num: "03", title: "Generate AI Insights", desc: "Click Analyze — our AI returns structured market intelligence in moments.", icon: <BrainCircuit size={20} /> },
-    { num: "04", title: "Act on Intelligence", desc: "Download reports, compare countries, and discover trade opportunities.", icon: <TrendingUp size={20} /> },
+    { num: "01", title: "Connect to Markets", desc: "The system autonomously monitors regional portals and agribusiness sources 24/7. No manual entry needed.", icon: <Radar size={20} /> },
+    { num: "02", title: "Automatic Data Sync", desc: "Raw data from across borders is instantly normalized, converting currencies and units into a single Unified View.", icon: <Database size={20} /> },
+    { num: "03", title: "Generate AI Insights", desc: "Our specialized AI analyzes the synchronized data to identify \"Arbitrage Alerts\" and risk levels in moments.", icon: <BrainCircuit size={20} /> },
+    { num: "04", title: "Drive Regional Growth", desc: "Access visual reports designed for immediate action. Discover where to sell and when to harvest with one tap.", icon: <TrendingUp size={20} /> },
   ];
 
   const stats = [
@@ -287,7 +287,7 @@ export default function Home() {
 
           <div className="flex justify-center mt-16">
             <Button
-              label="Launch the Platform"
+              label="Start Live Market Monitoring"
               onClick={() => router.push('/dashboard')}
               className="text-base px-10 py-4 rounded-full shadow-xl shadow-emerald-500/20 group"
             >
