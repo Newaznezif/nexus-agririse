@@ -19,6 +19,7 @@ import {
   BarChart3,
   TrendingUp,
   Radar,
+  User,
   Database,
   ArrowRight,
   CheckCircle2,
@@ -77,10 +78,11 @@ export default function Home() {
   ];
 
   const steps = [
-    { num: "01", title: "Connect to Markets", desc: "The system autonomously monitors regional portals and agribusiness sources 24/7. No manual entry needed.", icon: <Radar size={20} /> },
-    { num: "02", title: "Automatic Data Sync", desc: "Raw data from across borders is instantly normalized, converting currencies and units into a single Unified View.", icon: <Database size={20} /> },
-    { num: "03", title: "Generate AI Insights", desc: "Our specialized AI analyzes the synchronized data to identify \"Arbitrage Alerts\" and risk levels in moments.", icon: <BrainCircuit size={20} /> },
-    { num: "04", title: "Drive Regional Growth", desc: "Access visual reports designed for immediate action. Discover where to sell and when to harvest with one tap.", icon: <TrendingUp size={20} /> },
+    { num: "01", title: "Create an Account", desc: "Sign up in under 60 seconds to join the Nexus network. No technical skills or credit card required.", icon: <User size={20} /> },
+    { num: "02", title: "Connect to Markets", desc: "The system autonomously monitors regional portals and agribusiness sources 24/7. No manual entry needed.", icon: <Radar size={20} /> },
+    { num: "03", title: "Automatic Data Sync", desc: "Raw data from across borders is instantly normalized, converting currencies and units into a single Unified View.", icon: <Database size={20} /> },
+    { num: "04", title: "Generate AI Insights", desc: "Our specialized AI analyzes the synchronized data to identify \"Arbitrage Alerts\" and risk levels in moments.", icon: <BrainCircuit size={20} /> },
+    { num: "05", title: "Drive Regional Growth", desc: "Access visual reports designed for immediate action. Discover where to sell and when to harvest with one tap.", icon: <TrendingUp size={20} /> },
   ];
 
   const stats = [
@@ -255,7 +257,7 @@ export default function Home() {
               Getting Started
             </span>
             <h2 className="text-4xl lg:text-5xl font-black tracking-tight text-gray-900 dark:text-white">
-              From raw data to <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-emerald-600">market intelligence</span> in 4 steps
+              The <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-emerald-600">Intelligence Engine</span> in 5 Steps
             </h2>
           </div>
 
@@ -263,7 +265,7 @@ export default function Home() {
             {/* connector line */}
             <div className="absolute top-10 left-10 right-10 h-0.5 bg-gradient-to-r from-emerald-200 via-blue-200 to-emerald-200 dark:from-emerald-900 dark:via-blue-900 dark:to-emerald-900 hidden lg:block" />
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-10 relative z-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 lg:gap-8 relative z-10">
               {steps.map((step, i) => (
                 <motion.div
                   key={step.num}
