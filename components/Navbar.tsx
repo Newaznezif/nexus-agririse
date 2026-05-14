@@ -57,7 +57,7 @@ export const Navbar = () => {
         <div className="flex items-center">
           <Link href="/" className="mr-8 flex items-center space-x-4">
             <img
-              src="/Logo.jpeg"
+              src="/Logo.png"
               alt="Nexus AgriRise Logo"
               className="w-24 h-24 rounded-full object-cover shadow-lg border-2 border-white dark:border-zinc-900"
             />

@@ -115,7 +115,7 @@ export const generatePDFReport = async (
   doc.rect(0, 0, pageWidth, 60, 'F');
   
   try {
-    const logoData = await getBase64Image('/Logo.jpeg');
+    const logoData = await getBase64Image('/Logo.png');
     doc.addImage(logoData, 'JPEG', margin, 12, 20, 20);
   } catch (e) {
     doc.setTextColor(255, 255, 255);
