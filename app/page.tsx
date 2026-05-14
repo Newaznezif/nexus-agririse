@@ -409,18 +409,18 @@ export default function Home() {
                 Why Nexus AgriRise?
               </span>
               <h2 className="text-4xl lg:text-5xl font-black mb-8 leading-tight">
-                Built for the <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-400">complexity of African agriculture</span>
+                The Nexus Technical Standard: <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-400">Enterprise-Grade Infrastructure for Regional Resilience.</span>
               </h2>
               <p className="text-lg text-gray-400 leading-relaxed mb-10">
-                African agribusiness operates across fragmented markets, multiple languages, unreliable connectivity, and complex cross-border regulations. We built Nexus AgriRise specifically for this reality — not as a Western platform adapted for Africa, but as a system designed from the ground up for the continent's unique challenges.
+                African agribusiness operates across fragmented markets, multiple languages, unreliable connectivity, and complex cross-border regulations. We built Nexus AgriRise specifically for this reality — an autonomous intelligence layer designed from the ground up for the Ethiopia-Rwanda-CAR trade corridor.
               </p>
 
               <div className="space-y-4">
                 {[
-                  "AI engine trained on African commodity data patterns",
-                  "Works with any CSV — no template required",
-                  "Demo mode requires zero API keys or sign-in",
-                  "Multilingual dataset support across regional markets",
+                  "Autonomous Intelligence Engine: Proactively monitors regional commodity markets and climate sources without user intervention.",
+                  "Zero-Input Requirement: Optimized for rural accessibility—eliminating the need for manual data entry or specialized digital skills.",
+                  "Live Arbitrage Detection: Real-time identification of cross-border price gaps and trade opportunities across East and Central Africa.",
+                  "Native Multilingual Support: Strategic intelligence processing across diverse regional datasets and local languages.",
                 ].map((point) => (
                   <div key={point} className="flex items-start gap-3">
                     <CheckCircle2 size={18} className="text-emerald-400 mt-0.5 shrink-0" />
@@ -438,10 +438,10 @@ export default function Home() {
               className="grid grid-cols-2 gap-4"
             >
               {[
-                { icon: <Database size={24} />, title: "Supabase Backend", desc: "Row-level security, real-time sync, and managed Postgres for every user.", color: "text-blue-400" },
-                { icon: <BrainCircuit size={24} />, title: "Gemini 1.5 Flash", desc: "Google's fastest AI model for sub-30-second dataset analysis.", color: "text-emerald-400" },
-                { icon: <ShieldCheck size={24} />, title: "Enterprise Security", desc: "Your data never leaves your Supabase tenant. Zero data sharing.", color: "text-purple-400" },
-                { icon: <Globe size={24} />, title: "Pan-African Scope", desc: "14+ countries supported. New markets added every quarter.", color: "text-rose-400" },
+                { icon: <Database size={24} />, title: "Data Sovereignty", desc: "Built on a foundation of Row-Level Security (RLS) and isolated data tenants. Our managed Postgres framework ensures that sensitive agribusiness intelligence remains private and accessible only to authorized stakeholders.", color: "text-blue-400" },
+                { icon: <BrainCircuit size={24} />, title: "High-Velocity Synthesis", desc: "Integrating the Gemini 1.5 Flash engine to deliver complex regional market analysis in under 30 seconds. Transforming raw data into strategic foresight at the speed of the market.", color: "text-emerald-400" },
+                { icon: <ShieldCheck size={24} />, title: "Cybersecurity-First", desc: "Security is our core protocol. With a strict zero-data-sharing policy and encrypted cloud infrastructure, we guarantee that organizational insights meet the highest global standards for digital trust.", color: "text-purple-400" },
+                { icon: <Globe size={24} />, title: "Unified Regional Scope", desc: "Connecting fragmented value chains across the Ethiopia, Rwanda, and CAR corridors. A unified intelligence layer designed for the AfCFTA era, scaling across 14+ regional markets.", color: "text-rose-400" },
               ].map((card, i) => (
                 <motion.div
                   key={card.title}
