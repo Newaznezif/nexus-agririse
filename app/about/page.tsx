@@ -111,7 +111,7 @@ export default function AboutPage() {
               <div className="w-full md:w-64 flex-shrink-0 relative z-10">
                 <div className="w-full h-64 md:h-full min-h-[280px] rounded-3xl overflow-hidden border-2 border-blue-500/20 shadow-lg">
                   <img
-                    src="/Newaz.jpg"
+                    src="/Newaz.png"
                     alt="Newaz Nezif Abagero"
                     className="w-full h-full object-cover"
                     onError={(e) => {
