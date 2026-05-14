@@ -50,7 +50,7 @@ export default function Home() {
       icon: <BrainCircuit size={28} className="text-blue-600 dark:text-blue-400" />,
       color: "bg-blue-50 dark:bg-blue-900/20",
       title: "AI-Powered Analysis",
-      desc: "Our Gemini-powered engine automatically extracts market trends, risk signals, and price forecasts from raw data.",
+      desc: "Our Advanced Intelligence Engine automatically extracts market trends, risk signals, and price forecasts from raw data.",
     },
     {
       icon: <Globe size={28} className="text-purple-600 dark:text-purple-400" />,
@@ -166,7 +166,7 @@ export default function Home() {
 
             {/* Trust chips */}
             <div className="flex flex-wrap gap-3 mt-10">
-              {["Gemini AI Engine", "Supabase Secured", "YALI Affiliated", "Open Source"].map((tag) => (
+              {["Advanced Intelligence Engine", "Secure Cloud Infrastructure", "YALI Affiliated", "Open Source"].map((tag) => (
                 <span key={tag} className="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-full px-3 py-1.5">
                   <CheckCircle2 size={12} className="text-emerald-500" /> {tag}
                 </span>
@@ -439,7 +439,7 @@ export default function Home() {
             >
               {[
                 { icon: <Database size={24} />, title: "Private & Safe Data", desc: "Your agribusiness data is kept strictly separate and secure. Only authorized people in your team can see or access your information.", color: "text-blue-400" },
-                { icon: <BrainCircuit size={24} />, title: "Fast AI Analysis", desc: "Powered by Gemini AI to give you clear market insights in under 30 seconds. We turn scattered data into smart decisions instantly.", color: "text-emerald-400" },
+                { icon: <BrainCircuit size={24} />, title: "Fast AI Analysis", desc: "Powered by our Advanced Intelligence Engine to give you clear market insights in under 30 seconds. We turn scattered data into smart decisions instantly.", color: "text-emerald-400" },
                 { icon: <ShieldCheck size={24} />, title: "Top-Level Security", desc: "Security is our main priority. We never share your data, and we use strong cloud encryption to keep your insights completely safe.", color: "text-purple-400" },
                 { icon: <Globe size={24} />, title: "Connected Markets", desc: "We link trade routes across Ethiopia, Rwanda, CAR, and beyond. One simple platform built for 14+ African markets and growing.", color: "text-rose-400" },
               ].map((card, i) => (

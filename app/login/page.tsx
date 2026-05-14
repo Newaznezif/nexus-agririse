@@ -89,7 +89,7 @@ export default function LoginPage() {
 
             <div className="space-y-4">
               {[
-                "Gemini AI market analysis in under 30 seconds",
+                "Advanced Intelligence Engine market analysis in under 30 seconds",
                 "Cross-border comparison across 14+ markets",
                 "Investor-grade PDF report export",
                 "Full demo mode — no data required",

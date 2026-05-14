@@ -23,7 +23,7 @@ const services = [
     color: "from-emerald-500/10 to-teal-500/5 dark:from-emerald-900/20 dark:to-teal-900/10",
     border: "border-emerald-100 dark:border-emerald-900/40",
     iconColor: "text-emerald-600 dark:text-emerald-400",
-    desc: "Our Gemini 1.5-powered engine reads any agricultural CSV and returns structured market intelligence — price trend direction, risk rating, opportunity summary — in under 30 seconds.",
+    desc: "Our Advanced Intelligence Engine reads any agricultural CSV and returns structured market intelligence — price trend direction, risk rating, opportunity summary — in under 30 seconds.",
     bullets: [
       "Automatic field detection — no template required",
       "Low / Medium / High risk classification",
@@ -107,7 +107,7 @@ const services = [
     bullets: [
       "Drag-and-drop CSV upload",
       "Auto-preview with column detection",
-      "Supabase file storage with row-level security",
+      "Secure cloud storage with row-level security",
       "Demo mode requires zero real data",
     ],
   },
