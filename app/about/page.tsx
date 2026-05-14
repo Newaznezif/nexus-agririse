@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
-import { Mail, Linkedin, Github, Twitter, ExternalLink, Shield, Code, Server } from "lucide-react";
+import { Mail, Linkedin, Github, ExternalLink, Shield, Code, Server } from "lucide-react";
 
 export default function AboutPage() {
   return (
@@ -87,7 +87,11 @@ export default function AboutPage() {
                   <div className="flex flex-wrap gap-3">
                     <a href="mailto:augunkundimana@gmail.com" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-emerald-600 transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Mail size={20} /></a>
                     <a href="https://www.linkedin.com/in/augustin-nkundimana-162349257" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Linkedin size={20} /></a>
-                    <a href="https://x.com/aunkundimana?s=21" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Twitter size={20} /></a>
+                    <a href="https://x.com/aunkundimana?s=21" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors shadow-sm border border-gray-100 dark:border-zinc-700">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932L18.901 1.153ZM17.61 20.644h2.039L6.486 3.24H4.298L17.61 20.644Z" />
+                      </svg>
+                    </a>
                     <a href="https://github.com/nkundiman" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Github size={20} /></a>
                   </div>
                 </div>
