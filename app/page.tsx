@@ -27,11 +27,12 @@ import {
 } from "lucide-react";
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 32 },
+  hidden: { opacity: 0, y: 32, scale: 0.95 },
   show: (i: number = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, delay: i * 0.12 },
+    scale: 1,
+    transition: { type: "spring", stiffness: 100, damping: 20, delay: i * 0.15 },
   }),
 };
 
@@ -261,7 +262,7 @@ export default function Home() {
             </h2>
           </div>
 
-          <div className="relative max-w-4xl mx-auto">
+          <div className="relative max-w-7xl mx-auto">
             {/* connector line */}
             <div className="absolute top-10 left-10 right-10 h-0.5 bg-gradient-to-r from-emerald-200 via-blue-200 to-emerald-200 dark:from-emerald-900 dark:via-blue-900 dark:to-emerald-900 hidden lg:block" />
 
