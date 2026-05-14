@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
-import { Mail, Globe, ExternalLink, Shield, Code, Server } from "lucide-react";
+import { Mail, Linkedin, Github, Twitter, ExternalLink, Shield, Code, Server } from "lucide-react";
 
 export default function AboutPage() {
   return (
@@ -86,9 +86,9 @@ export default function AboutPage() {
                   </div>
                   <div className="flex flex-wrap gap-3">
                     <a href="mailto:augunkundimana@gmail.com" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-emerald-600 transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Mail size={20} /></a>
-                    <a href="https://www.linkedin.com/in/augustin-nkundimana-162349257" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Globe size={20} /></a>
-                    <a href="https://x.com/aunkundimana?s=21" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Globe size={20} /></a>
-                    <a href="https://github.com/nkundiman" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Globe size={20} /></a>
+                    <a href="https://www.linkedin.com/in/augustin-nkundimana-162349257" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Linkedin size={20} /></a>
+                    <a href="https://x.com/aunkundimana?s=21" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Twitter size={20} /></a>
+                    <a href="https://github.com/nkundiman" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Github size={20} /></a>
                   </div>
                 </div>
                 <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
@@ -129,8 +129,8 @@ export default function AboutPage() {
                     <p className="text-blue-600 dark:text-blue-400 font-medium text-lg">Co-Founder &amp; Lead AI Architect | Cybersecurity Analyst</p>
                   </div>
                   <div className="flex gap-3">
-                    <a href="https://linkedin.com/in/newaz-nezif-285439262" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Globe size={20} /></a>
-                    <a href="https://github.com/NewazNezif" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Globe size={20} /></a>
+                    <a href="https://linkedin.com/in/newaz-nezif-285439262" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-blue-600 transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Linkedin size={20} /></a>
+                    <a href="https://github.com/NewazNezif" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><Github size={20} /></a>
                     <a href="https://newaznezif.netlify.app/" target="_blank" rel="noreferrer" className="p-2 bg-white dark:bg-zinc-800 rounded-lg text-gray-500 hover:text-emerald-600 transition-colors shadow-sm border border-gray-100 dark:border-zinc-700"><ExternalLink size={20} /></a>
                   </div>
                 </div>
