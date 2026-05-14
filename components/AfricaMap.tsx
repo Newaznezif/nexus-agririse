@@ -7,26 +7,28 @@ export const AfricaMap = () => {
 
   // High-fidelity country data with flags and calibration
   const highlights = [
-    { 
-      id: 'ethiopia', 
-      name: 'Ethiopia', 
-      color: '#10b981', 
+    {
+      id: 'ethiopia',
+      name: 'Ethiopia',
+      color: '#10b981',
       flag: 'https://flagcdn.com/w80/et.png',
-      x: '76%', y: '40%' 
+      x: '80%', y: '40%'
     },
-    { 
-      id: 'rwanda', 
-      name: 'Rwanda', 
-      color: '#3b82f6', 
+    {
+      id: 'rwanda',
+      name: 'Rwanda',
+      color: '#3b82f6',
       flag: 'https://flagcdn.com/w80/rw.png',
-      x: '64%', y: '62%' 
+      x: '64%', y: '62%'
     },
-    { 
-      id: 'car', 
-      name: 'Central African Republic', 
-      color: '#f59e0b', 
+    {
+      id: 'car',
+      name: 'Central African Republic',
+      color: '#f59e0b',
       flag: 'https://flagcdn.com/w80/cf.png',
-      x: '53%', y: '47%' 
+      x: '53%', y: '42%'
+
+
     }
   ];
 
@@ -45,15 +47,15 @@ export const AfricaMap = () => {
       {/* 2. DETAILED AFRICA MAP WITH BORDERS (Using a high-fidelity image or styled SVG) */}
       {/* For the hackathon "WOW" factor, we use a beautifully styled background map */}
       <div className="relative w-full h-full flex items-center justify-center select-none">
-        <img 
-          src="https://upload.wikimedia.org/wikipedia/commons/6/66/Blank_Map-Africa.svg" 
+        <img
+          src="https://upload.wikimedia.org/wikipedia/commons/6/66/Blank_Map-Africa.svg"
           alt="Africa Borders"
           className="w-full h-full object-contain opacity-30 dark:opacity-20 invert dark:invert-0 transition-opacity duration-700"
           style={{ filter: 'drop-shadow(0 0 20px rgba(16, 185, 129, 0.2))' }}
         />
-        
+
         {/* Scanning Line */}
-        <motion.div 
+        <motion.div
           animate={{ y: ['0%', '100%', '0%'] }}
           transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
           className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent z-10 pointer-events-none"
@@ -77,15 +79,15 @@ export const AfricaMap = () => {
               className="absolute inset-0 w-16 h-16 -ml-8 -mt-8 rounded-full border-2 border-dashed"
               style={{ borderColor: country.color }}
             />
-            
+
             {/* Circled Flag */}
             <motion.div
               whileHover={{ scale: 1.2, rotate: 5 }}
               className="relative w-12 h-12 rounded-full border-4 shadow-2xl overflow-hidden bg-white dark:bg-zinc-900 transition-all duration-300"
               style={{ borderColor: country.color }}
             >
-              <img 
-                src={country.flag} 
+              <img
+                src={country.flag}
                 alt={country.name}
                 className="w-full h-full object-cover scale-110"
               />
@@ -94,7 +96,7 @@ export const AfricaMap = () => {
             </motion.div>
 
             {/* Country Tooltip Label */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="absolute top-14 left-1/2 -translate-x-1/2 whitespace-nowrap"
