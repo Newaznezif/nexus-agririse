@@ -67,8 +67,8 @@ export const CountrySection = ({ insight, dataset, generatorName }: CountrySecti
       <div className="bg-emerald-600 dark:bg-emerald-900/40 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/10">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-lg">
-            <img src="/Logo.svg" alt="Logo" className="w-10 h-10 object-contain dark:hidden" />
-            <img src="/Logo1.svg" alt="Logo" className="w-10 h-10 object-contain hidden dark:block" />
+            <img src="/Logo.svg" alt="Logo" className="w-10 h-10 object-contain dark:hidden scale-[1.15] translate-x-0.5" />
+            <img src="/Logo1.svg" alt="Logo" className="w-10 h-10 object-contain hidden dark:block scale-[1.15] translate-x-0.5" />
           </div>
           <div className="text-white">
             <h2 className="text-xl font-black tracking-tighter uppercase italic">Nexus Intelligence Stream</h2>

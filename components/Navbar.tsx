@@ -56,16 +56,18 @@ export const Navbar = () => {
         {/* Brand Text & Logo */}
         <div className="flex items-center">
           <Link href="/" className="mr-8 flex items-center space-x-4">
-            <img
-              src="/Logo.svg"
-              alt="Nexus AgriRise Logo"
-              className="dark:hidden w-24 h-24 rounded-full object-cover shadow-lg border-2 border-white"
-            />
-            <img
-              src="/Logo1.svg"
-              alt="Nexus AgriRise Logo"
-              className="hidden dark:block w-24 h-24 rounded-full object-cover shadow-lg border-2 border-zinc-900"
-            />
+            <div className="w-24 h-24 rounded-full shadow-lg border-2 border-white dark:border-zinc-900 overflow-hidden flex items-center justify-center shrink-0 bg-transparent">
+              <img
+                src="/Logo.svg"
+                alt="Nexus AgriRise Logo"
+                className="dark:hidden w-full h-full object-cover scale-[1.15] translate-x-1"
+              />
+              <img
+                src="/Logo1.svg"
+                alt="Nexus AgriRise Logo"
+                className="hidden dark:block w-full h-full object-cover scale-[1.15] translate-x-1"
+              />
+            </div>
             <span className="font-bold text-2xl tracking-tight text-emerald-700 dark:text-emerald-500">
               Nexus AgriRise
             </span>
