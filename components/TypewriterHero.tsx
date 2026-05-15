@@ -54,7 +54,7 @@ export default function TypewriterHero({ typingSpeed = 40, pauseDuration = 0 }: 
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-blue-600">
                 {firstWord}
               </span>
-              {words.length > 1 ? " " + rest : ""}
+              {words.length > 1 ? <span>{" " + rest}</span> : null}
               {i < lines.length - 1 && <br />}
             </React.Fragment>
           );
@@ -62,7 +62,7 @@ export default function TypewriterHero({ typingSpeed = 40, pauseDuration = 0 }: 
       }
       return (
         <React.Fragment key={i}>
-          {line}
+          <span>{line}</span>
           {i < lines.length - 1 && <br />}
         </React.Fragment>
       );
@@ -70,7 +70,7 @@ export default function TypewriterHero({ typingSpeed = 40, pauseDuration = 0 }: 
   };
 
   return (
-    <div className="relative mb-8 text-left">
+    <div className="relative mb-8 text-left" translate="no">
       {/* Invisible Placeholder to prevent layout shifts */}
       <h1
         className="text-5xl lg:text-7xl font-black tracking-tight leading-tight opacity-0 pointer-events-none select-none"
