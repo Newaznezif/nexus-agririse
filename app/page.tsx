@@ -141,7 +141,7 @@ export default function Home() {
             <span className="inline-block px-4 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-sm font-semibold mb-6">
               A Nexus Partnership with AGRIC AI
             </span>
-            <TypewriterHero pauseDuration={0} />
+            <TypewriterHero typingSpeed={120} pauseDuration={250} />
             <p className="text-xl text-gray-600 dark:text-gray-400 mb-10 max-w-xl leading-relaxed">
               Nexus AgriRise transforms complex agricultural data into actionable insights for Ethiopia, Rwanda, Central African Republic, and beyond.
             </p>
