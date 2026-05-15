@@ -1,6 +1,7 @@
 import os
 import httpx
 import asyncio
+# pyrefly: ignore [missing-import]
 from supabase import create_client, Client
 
 async def run_checks():

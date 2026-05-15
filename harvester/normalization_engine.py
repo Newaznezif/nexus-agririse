@@ -2,6 +2,7 @@ import os
 import httpx
 import asyncio
 from datetime import datetime
+# pyrefly: ignore [missing-import]
 from supabase import create_client, Client
 
 # --- Configuration ---

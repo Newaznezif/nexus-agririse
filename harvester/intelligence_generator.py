@@ -3,7 +3,9 @@ import json
 import asyncio
 from datetime import datetime
 from google import genai
+# pyrefly: ignore [missing-import]
 from google.genai import types
+# pyrefly: ignore [missing-import]
 from supabase import create_client, Client
 
 # --- Configuration ---
