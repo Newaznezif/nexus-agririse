@@ -89,42 +89,50 @@ async def scrape_ecx(page):
     return []
 
 async def scrape_naeb(page):
-    """Scrapes Rwanda NAEB price reports."""
+    """Scrapes Rwanda NAEB price reports with retries and robust timeouts."""
     print("Navigating to NAEB Rwanda...")
-    try:
-        await page.goto("https://www.naeb.gov.rw/", timeout=120000)
-        await page.wait_for_load_state("networkidle")
-        
-        # NAEB often has a "Market Intelligence" or "Reports" section.
-        # Fixed: Removed await from locator creation and .first is a property in Python Playwright.
-        price_link = page.get_by_role("link", name=re.compile("Price|Report|Market", re.IGNORECASE)).first
-        
-        if await price_link.count() > 0:
-            await price_link.click()
-            await page.wait_for_load_state("networkidle")
-        
-        records = []
-        # Target table structure
-        await page.wait_for_selector("table", timeout=20000)
-        rows = await page.locator("table tr").all()
-        
-        for row in rows:
-            cells = await row.locator("td").all_inner_texts()
-            if len(cells) >= 3:
-                records.append({
-                    "commodity_name": cells[0].strip(),
-                    "price": safe_float(cells[1]),
-                    "volume": safe_float(cells[2]),
-                    "grade": cells[3].strip() if len(cells) > 3 else "Standard",
-                    "region_market": "Rwanda National",
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "source": "NAEB"
-                })
-        
-        return records
-    except Exception as e:
-        print(f"NAEB Scraping Error: {e}", file=sys.stderr)
-        raise e
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            if attempt > 0:
+                print(f"NAEB Retry {attempt}/{max_retries - 1}. Waiting 10s...")
+                await asyncio.sleep(10)
+                
+            await page.goto("https://www.naeb.gov.rw/", timeout=60000)
+            await page.wait_for_load_state("networkidle", timeout=60000)
+            
+            # NAEB often has a "Market Intelligence" or "Reports" section.
+            price_link = page.get_by_role("link", name=re.compile("Price|Report|Market", re.IGNORECASE)).first
+            
+            if await price_link.count() > 0:
+                await price_link.click(timeout=60000)
+                await page.wait_for_load_state("networkidle", timeout=60000)
+            
+            records = []
+            # Target table structure
+            await page.wait_for_selector("table", timeout=60000)
+            rows = await page.locator("table tr").all()
+            
+            for row in rows:
+                cells = await row.locator("td").all_inner_texts()
+                if len(cells) >= 3:
+                    records.append({
+                        "commodity_name": cells[0].strip(),
+                        "price": safe_float(cells[1]),
+                        "volume": safe_float(cells[2]),
+                        "grade": cells[3].strip() if len(cells) > 3 else "Standard",
+                        "region_market": "Rwanda National",
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "source": "NAEB"
+                    })
+            
+            return records
+        except Exception as e:
+            print(f"NAEB Scraping Error (Attempt {attempt + 1}): {e}", file=sys.stderr)
+            if attempt == max_retries - 1:
+                raise e
+                
+    return []
 
 async def run_harvester():
     errors = []
@@ -138,6 +146,8 @@ async def run_harvester():
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         )
         page = await context.new_page()
+        page.set_default_timeout(60000)
+        page.set_default_navigation_timeout(60000)
         await stealth_async(page)
         
         # Execute Scraping Tasks
