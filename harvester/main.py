@@ -4,7 +4,9 @@ import json
 import re
 from datetime import datetime
 from playwright.async_api import async_playwright
+# pyrefly: ignore [missing-import]
 from playwright_stealth import stealth_async
+# pyrefly: ignore [missing-import]
 from supabase import create_client, Client
 
 # --- Configuration ---

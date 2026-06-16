@@ -29,7 +29,8 @@ client = genai.Client(api_key=GOOGLE_API_KEY, http_options={'api_version': 'v1'}
 MODEL_ID = "gemini-1.5-flash"
 
 async def generate_market_intelligence():
-    print(f"Using Google API Version: {client.http_options['api_version']}")
+    if hasattr(client, 'http_options') and isinstance(client.http_options, dict):
+        print(f"Using Google API Version: {client.http_options.get('api_version')}")
     print(f"Generating AI Market Intelligence (Modernized)... Model: {MODEL_ID}")
     
     try:
