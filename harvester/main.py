@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 import json
 import re
 from datetime import datetime
@@ -14,8 +15,8 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
-    print("Error: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.")
-    exit(1)
+    print("Error: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.", file=sys.stderr)
+    sys.exit(1)
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -29,7 +30,8 @@ async def upsert_data(data_list):
         response = supabase.table("market_intelligence").upsert(data_list).execute()
         print("Upsert successful.")
     except Exception as e:
-        print(f"Supabase Upsert Error: {e}")
+        print(f"Supabase Upsert Error: {e}", file=sys.stderr)
+        raise e
 
 def safe_float(value):
     try:
@@ -80,7 +82,9 @@ async def scrape_ecx(page):
                 print(f"ECX table found but no records parsed on attempt {attempt + 1}.")
                 
         except Exception as e:
-            print(f"ECX Scraping Error (Attempt {attempt + 1}): {e}")
+            print(f"ECX Scraping Error (Attempt {attempt + 1}): {e}", file=sys.stderr)
+            if attempt == max_retries - 1:
+                raise e
             
     return []
 
@@ -119,10 +123,14 @@ async def scrape_naeb(page):
         
         return records
     except Exception as e:
-        print(f"NAEB Scraping Error: {e}")
-        return []
+        print(f"NAEB Scraping Error: {e}", file=sys.stderr)
+        raise e
 
 async def run_harvester():
+    errors = []
+    ecx_data = []
+    naeb_data = []
+    
     async with async_playwright() as p:
         print("Launching stealth browser...")
         browser = await p.chromium.launch(headless=True)
@@ -133,18 +141,40 @@ async def run_harvester():
         await stealth_async(page)
         
         # Execute Scraping Tasks
-        ecx_data = await scrape_ecx(page)
-        naeb_data = await scrape_naeb(page)
-        
+        try:
+            ecx_data = await scrape_ecx(page)
+        except Exception as e:
+            print(f"ECX Scraping failed critically: {e}", file=sys.stderr)
+            errors.append(e)
+            
+        try:
+            naeb_data = await scrape_naeb(page)
+        except Exception as e:
+            print(f"NAEB Scraping failed critically: {e}", file=sys.stderr)
+            errors.append(e)
+            
         combined_data = ecx_data + naeb_data
         
         if combined_data:
-            await upsert_data(combined_data)
+            try:
+                await upsert_data(combined_data)
+            except Exception as e:
+                print(f"Failed to upsert data to database: {e}", file=sys.stderr)
+                errors.append(e)
         else:
             print("No data collected during this run.")
+            if errors:
+                raise Exception("Pipeline failed: no data collected due to scraper/database errors.")
             
         await browser.close()
-        print("Harvester run complete.")
+        
+    if errors:
+        raise Exception(f"Pipeline finished with {len(errors)} error(s).")
+    print("Harvester run complete.")
 
 if __name__ == "__main__":
-    asyncio.run(run_harvester())
+    try:
+        asyncio.run(run_harvester())
+    except Exception as e:
+        print(f"Fatal error in harvester pipeline: {e}", file=sys.stderr)
+        sys.exit(1)

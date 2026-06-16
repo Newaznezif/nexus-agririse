@@ -63,3 +63,10 @@ jobs:
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SERVICE_ROLE }}
         GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
       run: python harvester/intelligence_generator.py
+
+    - name: Dispatch Workflow Failure Alert
+      if: failure()
+      run: |
+        curl -X POST -H "Content-Type: application/json" \
+          -d '{"text": "🚨 Nexus AgriRise Harvester daily scheduled workflow failed! Check the execution logs here: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+          ${{ secrets.MONITORING_WEBHOOK_URL || 'https://httpbin.org/post' }}

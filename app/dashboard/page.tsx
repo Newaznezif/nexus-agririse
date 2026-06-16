@@ -11,6 +11,7 @@ import { DatasetTable } from '@/components/DatasetTable';
 import { DatasetPreview } from '@/components/DatasetPreview';
 import { DemoToggle } from '@/components/DemoToggle';
 import { DashboardAnalytics } from '@/components/DashboardAnalytics';
+import { supabase } from '@/lib/supabaseClient';
 import { getUserDatasets } from '@/services/database';
 import { demoDatasets } from '@/data/demoDatasets';
 import { demoInsights } from '@/data/demoInsights';
@@ -25,6 +26,26 @@ export default function DashboardPage() {
 
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [fetching, setFetching] = useState(true);
+  const [pipelineFreshness, setPipelineFreshness] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchFreshness() {
+      try {
+        const { data } = await supabase
+          .from('harvester_status')
+          .select('value')
+          .eq('key', 'last_run')
+          .single();
+        if (data?.value?.last_updated) {
+          const date = new Date(data.value.last_updated);
+          setPipelineFreshness(date.toLocaleString());
+        }
+      } catch (err) {
+        console.error("Error fetching pipeline freshness:", err);
+      }
+    }
+    fetchFreshness();
+  }, []);
 
   const [previewData, setPreviewData] = useState<any[] | null>(null);
   const [previewColumns, setPreviewColumns] = useState<string[]>([]);
@@ -104,6 +125,10 @@ export default function DashboardPage() {
             <p className="text-emerald-100 mt-2 text-sm max-w-xl">
               Upload agricultural datasets, generate AI-powered market insights, and discover cross-border trade opportunities across Africa.
             </p>
+            <div className="mt-4 flex items-center gap-2 text-xs text-emerald-100 bg-white/15 dark:bg-black/20 w-fit px-3 py-1 rounded-full border border-white/10 shadow-sm backdrop-blur-sm">
+              <span className={`w-2 h-2 rounded-full ${pipelineFreshness ? 'bg-emerald-300 animate-pulse' : 'bg-amber-300'}`} />
+              <span className="font-medium">Data Pipeline: {pipelineFreshness ? `Last run ${pipelineFreshness}` : 'Retrieving status...'}</span>
+            </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <DemoToggle />

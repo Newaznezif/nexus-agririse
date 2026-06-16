@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import asyncio
 from datetime import datetime
@@ -18,8 +19,8 @@ SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SE
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY or not GOOGLE_API_KEY:
-    print(f"Error: Missing environment variables. URL: {bool(SUPABASE_URL)}, KEY: {bool(SUPABASE_KEY)}, GOOGLE: {bool(GOOGLE_API_KEY)}")
-    exit(1)
+    print(f"Error: Missing environment variables. URL: {bool(SUPABASE_URL)}, KEY: {bool(SUPABASE_KEY)}, GOOGLE: {bool(GOOGLE_API_KEY)}", file=sys.stderr)
+    sys.exit(1)
 
 # Initialize Supabase
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -119,17 +120,34 @@ async def generate_market_intelligence():
                     # Target the 'insights' table as requested
                     result = supabase.table("insights").insert(insert_payload).execute()
                     print("AI Intelligence successfully stored in insights table.")
+                    
+                    # Write data freshness payload to harvester_status table
+                    try:
+                        print("Updating pipeline data freshness tracker...")
+                        current_time = datetime.utcnow().isoformat() + "Z"
+                        supabase.table("harvester_status").upsert({
+                            "key": "last_run",
+                            "value": {"last_updated": current_time}
+                        }).execute()
+                        print("Data freshness payload written successfully.")
+                    except Exception as status_err:
+                        print(f"Failed to update data freshness tracker: {status_err}", file=sys.stderr)
                 except Exception as db_err:
-                    print(f"Supabase Insertion Error: {db_err}")
+                    print(f"Supabase Insertion Error: {db_err}", file=sys.stderr)
                     # Log more details if possible
                     if hasattr(db_err, 'message'):
-                        print(f"Message: {db_err.message}")
+                        print(f"Message: {db_err.message}", file=sys.stderr)
                 
         except json.JSONDecodeError as je:
             print(f"Error parsing AI response: {je}")
 
     except Exception as e:
-        print(f"Error in AI Intelligence Generation: {e}")
+        print(f"Error in AI Intelligence Generation: {e}", file=sys.stderr)
+        raise e
 
 if __name__ == "__main__":
-    asyncio.run(generate_market_intelligence())
+    try:
+        asyncio.run(generate_market_intelligence())
+    except Exception as e:
+        print(f"Fatal error in intelligence generator: {e}", file=sys.stderr)
+        sys.exit(1)
