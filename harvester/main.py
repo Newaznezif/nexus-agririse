@@ -154,13 +154,13 @@ async def run_harvester():
         try:
             ecx_data = await scrape_ecx(page)
         except Exception as e:
-            print(f"ECX Scraping failed critically: {e}", file=sys.stderr)
+            print(f"WARNING: ECX Scraping failed critically but is being skipped gracefully: {e}")
             errors.append(e)
             
         try:
             naeb_data = await scrape_naeb(page)
         except Exception as e:
-            print(f"NAEB Scraping failed critically: {e}", file=sys.stderr)
+            print(f"WARNING: NAEB Scraping failed critically but is being skipped gracefully: {e}")
             errors.append(e)
             
         combined_data = ecx_data + naeb_data
@@ -170,16 +170,22 @@ async def run_harvester():
                 await upsert_data(combined_data)
             except Exception as e:
                 print(f"Failed to upsert data to database: {e}", file=sys.stderr)
-                errors.append(e)
+                raise e
         else:
             print("No data collected during this run.")
             if errors:
-                raise Exception("Pipeline failed: no data collected due to scraper/database errors.")
+                raise Exception("Pipeline failed: no data collected due to scraper errors.")
             
         await browser.close()
         
+    # Only raise failure if NO data source succeeded (i.e. combined_data is empty and errors occurred)
+    # If combined_data is not empty (at least one source succeeded), we exit with 0.
+    if not combined_data and errors:
+        raise Exception(f"Pipeline failed critically with {len(errors)} error(s) and zero data collected.")
+    
     if errors:
-        raise Exception(f"Pipeline finished with {len(errors)} error(s).")
+        print(f"Pipeline finished with some non-fatal warnings: {len(errors)} error(s) occurred but ignored because other sources succeeded.")
+        
     print("Harvester run complete.")
 
 if __name__ == "__main__":
