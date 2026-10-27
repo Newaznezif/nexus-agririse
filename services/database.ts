@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabaseClient";
+import { getSupabase } from "@/lib/supabaseClient";
 
 /* =========================
    TYPES (light safety layer)
@@ -25,7 +25,7 @@ export interface InsightInput {
 ========================= */
 
 export async function saveDataset(data: DatasetInput) {
-  const { data: result, error } = await supabase
+  const { data: result, error } = await getSupabase()
     .from("datasets")
     .insert([
       {
@@ -47,7 +47,7 @@ export async function saveDataset(data: DatasetInput) {
 }
 
 export async function getUserDatasets(userId: string) {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("datasets")
     .select("*")
     .eq("user_id", userId)
@@ -65,7 +65,7 @@ export async function getUserDatasets(userId: string) {
 ========================= */
 
 export async function saveInsight(data: InsightInput) {
-  const { data: result, error } = await supabase
+  const { data: result, error } = await getSupabase()
     .from("insights")
     .insert([
       {
@@ -86,11 +86,12 @@ export async function saveInsight(data: InsightInput) {
   return { success: true, data: result };
 }
 
-export async function getDatasetInsights(datasetId: string) {
-  const { data, error } = await supabase
+export async function getDatasetInsights(datasetId: string, userId: string) {
+  const { data, error } = await getSupabase()
     .from("insights")
     .select("*")
     .eq("dataset_id", datasetId)
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -101,7 +102,7 @@ export async function getDatasetInsights(datasetId: string) {
 }
 
 export async function getUserInsights(userId: string) {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("insights")
     .select("*")
     .eq("user_id", userId)
@@ -118,11 +119,34 @@ export async function getUserInsights(userId: string) {
    OPTIONAL UTILITY
 ========================= */
 
-export async function deleteDataset(datasetId: string) {
-  const { error } = await supabase
+/**
+ * Counts rows only, so no dataset contents are returned to the caller. These
+ * application-level checks narrow access but do not replace database RLS
+ * policies, which remain the enforcement boundary.
+ */
+export async function verifyDatasetOwnership(
+  datasetId: string,
+  userId: string,
+): Promise<{ owned: boolean; error?: string }> {
+  const { count, error } = await getSupabase()
+    .from("datasets")
+    .select("id", { count: "exact", head: true })
+    .eq("id", datasetId)
+    .eq("user_id", userId);
+
+  if (error) {
+    return { owned: false, error: error.message };
+  }
+
+  return { owned: (count ?? 0) === 1 };
+}
+
+export async function deleteDataset(datasetId: string, userId: string) {
+  const { error } = await getSupabase()
     .from("datasets")
     .delete()
-    .eq("id", datasetId);
+    .eq("id", datasetId)
+    .eq("user_id", userId);
 
   if (error) {
     return { success: false, error: error.message };

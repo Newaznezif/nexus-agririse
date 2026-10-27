@@ -1,13 +1,10 @@
-"use client";
-import { ComingSoonModule } from '@/components/ComingSoonModule';
-import { Map } from 'lucide-react';
+import { EthiopiaRegionMap } from '@/components/data/EthiopiaRegionMap';
+
+export const metadata = {
+  title: 'Geospatial · Nexus AgriRise',
+  description: 'Ethiopian administrative boundaries over NASA GIBS satellite composites, with per-pixel NDVI and rainfall sampling.',
+};
 
 export default function MapPage() {
-  return (
-    <ComingSoonModule 
-      title="Supply Chain Map" 
-      icon={Map} 
-      description="Visualizing the digital infrastructure of African agriculture with interactive logistics mapping and port-to-farm connectivity."
-    />
-  );
+  return <EthiopiaRegionMap />;
 }

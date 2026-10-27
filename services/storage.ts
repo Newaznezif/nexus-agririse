@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabase } from '@/lib/supabaseClient';
 
 export const uploadFile = async (
   userId: string,
@@ -8,7 +8,7 @@ export const uploadFile = async (
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
 
-    const { data, error } = await supabase.storage
+    const { data, error } = await getSupabase().storage
       .from('datasets')
       .upload(fileName, file, {
         cacheControl: '3600',
@@ -19,7 +19,7 @@ export const uploadFile = async (
       throw error;
     }
 
-    const { data: publicUrlData } = supabase.storage
+    const { data: publicUrlData } = getSupabase().storage
       .from('datasets')
       .getPublicUrl(fileName);
 

@@ -6,6 +6,7 @@ import { UploadCloud } from 'lucide-react';
 import { parseCSV } from '@/services/csvParser';
 import { uploadFile } from '@/services/storage';
 import { saveDataset } from '@/services/database';
+import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import { UploadProgress } from './UploadProgress';
 
@@ -82,6 +83,15 @@ export const UploadCard = ({ onPreviewReady, onUploadComplete }: UploadCardProps
   const handleUpload = async () => {
     if (!file || !user) return;
 
+    // The server derives identity from this token; without a session there is no
+    // verifiable account to store the dataset or insight against.
+    const { data: { session } } = await getSupabase().auth.getSession();
+    if (!session?.access_token) {
+      setError('Please sign in to upload and analyze datasets.');
+      setProgress(0);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setProgress(60);
@@ -116,13 +126,19 @@ export const UploadCard = ({ onPreviewReady, onUploadComplete }: UploadCardProps
       
       const aiResponse = await fetch('/api/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({
           dataset: fullData,
-          userId: user.id,
           datasetId: dbData?.id || null
         })
       });
+
+      if (aiResponse.status === 403) {
+        throw new Error('Your account does not have access to this dataset.');
+      }
 
       if (!aiResponse.ok) {
         throw new Error('AI analysis failed. Your dataset is uploaded, but insights could not be generated.');
