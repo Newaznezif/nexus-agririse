@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   LayoutDashboard, Upload, BrainCircuit, BarChart3,
   Settings, Globe2, LogOut, Leaf, CloudRain, 
-  TrendingUp, Map, History, ShieldAlert,
+  TrendingUp, Map, History, ShieldAlert, Database,
   Menu, X
 } from 'lucide-react';
 
@@ -62,8 +62,9 @@ export const Sidebar = () => {
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, category: 'Main' },
     
     { name: 'Climate Monitor', href: '/dashboard/climate', icon: CloudRain, category: 'Intelligence' },
-    { name: 'Market Forecasts', href: '/dashboard/forecasts', icon: TrendingUp, category: 'Intelligence' },
-    { name: 'Supply Chain Map', href: '/dashboard/map', icon: Map, category: 'Intelligence' },
+    { name: 'Market Intelligence', href: '/dashboard/forecasts', icon: TrendingUp, category: 'Intelligence' },
+    { name: 'Geospatial Layers', href: '/dashboard/map', icon: Map, category: 'Intelligence' },
+    { name: 'Data Sources', href: '/dashboard/sources', icon: Database, category: 'Intelligence' },
     
     { name: 'Audit History', href: '/dashboard/audit', icon: History, category: 'System' },
     { name: 'Security Alerts', href: '/dashboard/security', icon: ShieldAlert, category: 'System' },

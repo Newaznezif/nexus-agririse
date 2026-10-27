@@ -11,7 +11,7 @@ import { DatasetTable } from '@/components/DatasetTable';
 import { DatasetPreview } from '@/components/DatasetPreview';
 import { DemoToggle } from '@/components/DemoToggle';
 import { DashboardAnalytics } from '@/components/DashboardAnalytics';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabase } from '@/lib/supabaseClient';
 import { getUserDatasets } from '@/services/database';
 import { demoDatasets } from '@/data/demoDatasets';
 import { demoInsights } from '@/data/demoInsights';
@@ -31,7 +31,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchFreshness() {
       try {
-        const { data } = await supabase
+        const { data } = await getSupabase()
           .from('harvester_status')
           .select('value')
           .eq('key', 'last_run')

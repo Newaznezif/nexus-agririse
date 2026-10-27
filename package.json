@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:data": "node scripts/check-data-routes.mjs",
+    "show:data": "node scripts/show-live-sample.mjs",
+    "sync:data": "node scripts/run-sync.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -24,7 +24,7 @@ export default function SignupPage() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await getSupabase().auth.getSession();
       if (session) {
         router.replace('/dashboard');
       } else {
@@ -57,7 +57,7 @@ export default function SignupPage() {
       return;
     }
 
-    const { error: authError } = await supabase.auth.signUp({ email, password });
+    const { error: authError } = await getSupabase().auth.signUp({ email, password });
 
     if (authError) {
       setError(authError.message);

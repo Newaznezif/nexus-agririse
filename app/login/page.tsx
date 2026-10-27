@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/Button';
 import { DemoToggle } from '@/components/DemoToggle';
 import { useDemoMode } from '@/context/DemoModeContext';
@@ -26,7 +26,7 @@ export default function LoginPage() {
       return;
     }
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await getSupabase().auth.getSession();
       if (session) {
         router.replace('/dashboard');
       } else {
@@ -47,7 +47,7 @@ export default function LoginPage() {
       return;
     }
 
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: authError } = await getSupabase().auth.signInWithPassword({ email, password });
 
     if (authError) {
       setError(authError.message);

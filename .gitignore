@@ -36,6 +36,8 @@ yarn-error.log*
 .env.local
 .env.production
 .env.development
+# ...but the values-free template is meant to be committed
+!.env.example
 # vercel
 .vercel
 

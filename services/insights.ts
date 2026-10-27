@@ -1,9 +1,9 @@
-import { supabase } from "@/lib/supabaseClient";
+import { getSupabase } from "@/lib/supabaseClient";
 import { Insight } from "@/types";
 
 export async function getUserInsights(userId: string): Promise<{ data: Insight[] | null; error: string | null }> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from("insights")
       .select("*")
       .eq("user_id", userId)
