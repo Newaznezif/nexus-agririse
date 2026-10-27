@@ -88,7 +88,7 @@ The consequence has to be said out loud rather than inferred from a green build:
 ## 3. Turning it on
 
 1. Review and apply `supabase/migrations/20261026000100…000600` in order, one file per
-   transaction, after running the P1–P7 pre-flight queries in the README. Apply them through
+   transaction, after running the P0–P7 pre-flight queries in the README. Apply them through
    the Supabase SQL editor or `supabase db push` — your call, executed by you.
 2. Set the four variables above in the deployment's secret store (never in a committed file).
 3. Expose the `data` schema to PostgREST per README §6, then verify with README §7 (V1–V9).

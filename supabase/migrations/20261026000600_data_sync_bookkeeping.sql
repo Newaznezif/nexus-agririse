@@ -204,10 +204,11 @@ grant execute on function data.release_sync_lease(text, text)         to service
 grant usage on schema data to service_role;
 
 -- sync.ts writes with upsert (select + insert + update) on data.location,
--- data.market_price, data.daily_climate, data.exchange_rate, data.satellite_observation and
--- closes the run row in data.sync_runs; it claims and releases the lease in
--- data.sync_leases, and the lease functions themselves run select/insert/update as the
--- invoking role.
+-- data.daily_climate, data.market_price_observations, data.exchange_rate_observations,
+-- data.economic_indicator_observations, data.satellite_layers and data.satellite_observations;
+-- it opens data.v_source_freshness and data.sync_runs for reading, inserts and closes its own
+-- run row in data.sync_runs, and claims/releases the lease in data.sync_leases through
+-- data.claim_sync_lease and data.release_sync_lease, which run as the invoking role.
 --
 -- `delete` is included for operator backfill and retention pruning, NOT because the
 -- application uses it: no code path in lib/, services/ or scripts/ issues a DELETE against
@@ -222,15 +223,40 @@ grant select, insert, update, delete on all tables in schema data to service_rol
 -- the sequence, not the table.
 grant usage, select on all sequences in schema data to service_role;
 
--- `all tables` does NOT cover views, and the app reads `data.v_source_freshness` through the
--- API role, so a pack that grants only tables leaves that request denied.
-grant select on all views in schema data to service_role;
+-- Views need no separate grant here, and cannot be given one this way: PostgreSQL has no
+-- `ON ALL VIEWS` mass-privilege form. The GRANT documentation says it in one sentence —
+-- `"ALL TABLES" also affects views and foreign tables, just like the specific-object GRANT
+-- command` — so the statement above already holds SELECT on `data.v_source_freshness`, which
+-- is the only view the application reads and which already exists by this point in the pack.
+--
+-- This was not taken on faith, because the earlier draft of this file did grant views
+-- separately. Both `grant select on all views in schema data …` and
+-- `alter default privileges … on views …` were fed to the real PostgreSQL grammar
+-- (libpg_query, version 160001) and both return `syntax error at or near "views"`. Left in,
+-- they would have aborted this file at apply time, after the tables, sequences, view and RLS
+-- statements had already run. A pack that "grants views explicitly" here is a pack that does
+-- not apply.
+--
+-- The accepted classes, probed against the same grammar so this is not folklore:
+-- `on all tables`, `on all sequences`, `on all functions`, `on all procedures` and
+-- `on all routines` parse; `on all views` and `on all materialized views` do not. In
+-- `alter default privileges`, `on tables`, `on sequences`, `on functions`, `on routines`,
+-- `on types` and `on schemas` parse; `on views`, `on procedures` and `on materialized views`
+-- do not. So if a materialized view is ever added to `data`, no mass form reaches it — grant
+-- it by name.
 
 -- And for anything a later file or a future migration adds to this schema.
 alter default privileges in schema data grant select, insert, update, delete on tables   to service_role;
 alter default privileges in schema data grant usage, select                on sequences  to service_role;
-alter default privileges in schema data grant select                       on views      to service_role;
 alter default privileges in schema data grant execute                      on functions  to service_role;
+--
+-- The accepted classes here are `schemas | tables | sequences | types | functions | routines`
+-- — probed against the same grammar, where `procedures` and `views` do not parse at all. What
+-- the grammar cannot tell you is whether the TABLES default-privileges class also covers views
+-- created LATER, so do not depend on that: after adding a view to this schema, re-run the
+-- `grant … on all tables in schema data` above or grant the view by name, then prove it with
+-- README section 7's V4 `can_read_view` check, which is `has_table_privilege` on the view
+-- itself.
 --
 -- Two facts about `alter default privileges` worth recording, because they surprise people:
 -- it applies only to objects created by the role running it later on, and its entries are
@@ -239,10 +265,19 @@ alter default privileges in schema data grant execute                      on fu
 -- with `SELECT pg_get_userbyl(defaclrole), defaclobjtype, defaclacl FROM pg_default_acl d
 --   JOIN pg_namespace n ON n.oid = d.defaclnamespace WHERE n.nspname = 'data';`.
 --
--- NOT granted here, on purpose: `REFERENCES` on data.location and the other FK targets.
+-- NOT granted here, on purpose: `REFERENCES` on the pack's FK targets.
 --
--- `data.market_price`, `data.daily_climate` and `data.satellite_observation` each carry
--- `location_key text not null references data.location (location_key)`, and a wide reading
+-- The whole pack declares exactly three foreign keys (grep of `references` across files
+-- 0001–0006): `data.daily_climate.location_key`, `data.satellite_observations.location_key`
+-- (both → `data.location (location_key)`, files 0003 and 0005) and
+-- `data.satellite_observations.layer_id` → `data.satellite_layers (layer_id)` (file 0005).
+-- `data.market_price_observations`, `data.exchange_rate_observations` and
+-- `data.economic_indicator_observations` deliberately carry no FK — they key on publisher
+-- strings, not on `data.location`. So the targets whose REFERENCES might matter are
+-- `data.location` and `data.satellite_layers`, and nothing else.
+--
+-- Each of those three columns is
+-- `… text not null references data.<target> (<col>)`, and a wide reading
 -- of SQL says the role doing the inserting must hold REFERENCES on the referenced table.
 -- PostgreSQL's own GRANT and CREATE TABLE documentation describes REFERENCES as the
 -- privilege needed to *declare* such a constraint, and states no requirement on the role
@@ -257,9 +292,10 @@ alter default privileges in schema data grant execute                      on fu
 --     referencing it AS the role the sync uses. 42501 on the second statement means the
 --     grant is genuinely required and this file must add it; success means the docs are
 --     right and the grant would have been unnecessary privilege.
---   Until then the activation sequence in README section 6 treats a 42501 naming
---   `data_location_references` or `data.location` as this known open question, not as a
---   mystery.
+--   Until then, README section 7 query V9 records the privilege state on the real project, and
+--   README section 2b says which parts of this pack a real grammar has actually checked. Treat
+--   a 42501 naming `data.location` (or a `data_location_references` privilege) during the first
+--   throwaway-database sync as this known open question being answered, not as a new mystery.
 
 -- =========================================================================================
 -- 6. NOT done by this file: exposing schema `data` to the REST API

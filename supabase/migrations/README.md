@@ -81,6 +81,78 @@ The guards make a *second* run safe. They do not make a *first* run atomic in ev
 - To see where a mixed state actually is, use section 7's V1–V4 verbatim; they are written to
   be run at any point, not only after a clean apply.
 
+### 2b. How much of this pack PostgreSQL's own parser has actually checked
+
+An earlier revision of this file said the pack was "static reviewed". That was not enough, and
+it was wrong in a way that mattered: reviewed by eye, file 0006 looked fine until its two view
+grants were run through a real grammar. So the pack was then parsed with **libpg_query**
+(PostgreSQL's own parser, the same one `psql` and every client uses), compiled to WebAssembly
+as `pg-query-emscripten`. It reported grammar version **160001**, i.e. the PostgreSQL 16.1
+grammar.
+
+How, so the result can be reproduced or doubted:
+
+- The package was installed into a scratch directory **outside** this repository. `package.json`
+  and `package-lock.json` are untouched, no dependency was added, and **nothing connected to any
+  database** — a parser is not a server, and nothing here was executed.
+- Each file was split at top-level semicolons by a tokenizer that honours `--` comments,
+  `/* */` blocks, `''` escapes and `$tag$ … $tag$` dollar quoting, so a `do $$ … $$;` body stays
+  one statement. Then every statement was parsed on its own, in a **fresh parser instance per
+  file**: the asm.js runtime degrades after roughly ninety calls in a single instance and starts
+  reporting internal errors for statements that are perfectly valid. Any harness that reuses one
+  instance across this whole pack will produce false failures — that was observed, not assumed.
+- Two negative controls confirmed the harness is actually parsing: `selct from where` and
+  `create table t (id int;` both come back with real `syntax error at or near …` messages.
+  Those two hold. An earlier revision of this section credited the run with a third,
+  `alter table data.location alter column id set default (14)`, believing the parenthesised
+  form to be a syntax error — probed directly, the grammar **accepts** it, so it was never a
+  check, and the typo it was said to catch (`set default now()` on a `bigint`) was found by
+  hand. Likewise "`ON ALL VIEWS`" is rejected but `alter default privileges for role x grant
+  execute on routines to y` parses cleanly, so only the `ON VIEWS` class mis-spelling is a
+  real control. Re-run them yourself before repeating any of this.
+- Positive controls, same grammar, because the accepted object classes are what the file 0006
+  comment now relies on: `on all tables`, `on all sequences`, `on all functions`, `on all
+  procedures` and `on all routines` parse, while `on all views` and `on all materialized views`
+  do not; in `alter default privileges`, `on tables`, `on sequences`, `on functions`,
+  `on routines`, `on types` and `on schemas` parse, while `on views`, `on procedures` and
+  `on materialized views` do not. Consequence worth knowing before adding anything: a
+  materialized view in `data` would be reachable by **no** mass-privilege form, so it has to be
+  granted by name and verified with V4.
+
+| File | Statements | Grammar failures |
+| --- | --- | --- |
+| `…0001_data_schema_preparation` | 9 | 0 |
+| `…0002_data_market_observations` | 37 | 0 |
+| `…0003_data_weather_and_agroclimate` | 47 | 0 |
+| `…0004_data_exchange_and_indicators` | 33 | 0 |
+| `…0005_data_satellite_observations` | 26 | 0 |
+| `…0006_data_sync_bookkeeping` | 36 → 34 | 2 found, both removed |
+
+The two failures were `grant select on all views in schema data to service_role;` and
+`alter default privileges in schema data grant select on views to service_role;`, each
+`syntax error at or near "views"`. PostgreSQL has no `ON ALL VIEWS` mass-privilege form and no
+`VIEWS` class in `ALTER DEFAULT PRIVILEGES`; `ON TABLES` is the class that covers views, which
+the GRANT documentation states outright. Those two statements would have aborted file 0006 at
+apply time, after its tables, sequences, view and RLS statements had already taken effect — a
+partial apply of exactly the kind section 2a describes. They are gone, and the file now says
+why they were never needed.
+
+What a grammar check does **not** buy you, and where the risk therefore still sits:
+
+- **PL/pgSQL bodies are not validated.** `DoStmt` and `CreateFunctionStmt` parse as containers;
+  PostgreSQL only checks the body text when the language handler runs, i.e. at apply time. The
+  three `do $$` guards in 0001, the one in 0003 and the two lease functions in 0006 were read by
+  hand instead — which did find two real defects (an undeclared loop variable, and a
+  `int2vector::int2[]` cast that is not in the grammar), but hand-reading is not a parse and
+  should not be reported as one.
+- **No semantic analysis.** Object existence, `has_*_privilege()` argument shapes, whether
+  `security_invoker` is accepted on your server version, FK targets, and every privilege name
+  are outside what a raw parser can see.
+- **Nothing has been executed.** The remaining decisive step is unchanged: apply the pack to a
+  **throwaway** Supabase project (or a local PostgreSQL 15+) with the same major version as
+  production, run section 7, and only then treat these files as applyable to the real project.
+  That is the environment in which the `REFERENCES` question in file 0006 also gets answered.
+
 One operational cost to know before running file 0003 on a populated database: it adds
 `record_replaced_at timestamptz not null default now()` to `public.environmental_data`. A
 volatile default cannot use the fast `ADD COLUMN` path, so Postgres rewrites the table and
@@ -98,6 +170,13 @@ after any change to the project, and treat nothing here as verified that this fi
 state as verified.
 
 ```sql
+-- P0 PostgreSQL version. The pack needs 15+ for `alter view … set (security_invoker = true)`,
+--    which four views rely on to avoid becoming owner-rights read paths. On 14 or older those
+--    four statements fail and the views stay security-definer by default — a real exposure, not
+--    a cosmetic one. Supabase projects are 15+; confirm rather than assume.
+select current_setting('server_version_num')::int as version_num,
+       version()                                   as build;
+
 -- P1 Which of the legacy objects actually exist, and with which columns?
 select table_name, column_name, data_type, is_nullable
   from information_schema.columns
@@ -195,6 +274,11 @@ applied, so every statement below describes the schema **before** these migratio
   API configuration, not in `pg_db_role_setting`, so an empty result does not mean `data`
   is unpublished. Confirm in the dashboard (API settings → exposed schemas) before choosing
   option A in section 6.
+- **P0 was not captured by that run** (it was added afterwards), so the project's
+  `server_version_num` is unverified here. The pack needs PostgreSQL 15+ for the four
+  `security_invoker` view settings; on an older server those statements fail and the views
+  remain owner-rights read paths. Hosted Supabase projects are 15+, but that is platform
+  knowledge, not a measurement — run P0 and paste the number.
 - Still unverified, and not made less unverified by this pack: what `anon`/`authenticated`
   may read through `public.*` (P7), and the security mode of `public.unified_market_intel`
   (section 10).
@@ -332,8 +416,12 @@ select has_schema_privilege('service_role','data','usage')                      
        has_function_privilege('service_role','data.claim_sync_lease(text,text,interval)','execute') as can_claim;
 -- expected: t, t, t, t, t
 --
--- `can_read_view` is the one people miss: `grant ... on all tables` does not cover views,
--- and the app's "last synced" column reads a view.
+-- `can_read_view` still earns its place in this list, but not for the reason an earlier draft
+-- of this file gave: PostgreSQL has no `ON ALL VIEWS` grant form at all, and the documentation
+-- states that `"ALL TABLES" also affects views and foreign tables`. So the mass grant in file
+-- 0006 covers the view — and if it ever stops covering it (a view created after a partial
+-- apply, say), this check is what notices. Re-run the mass grant rather than inventing a
+-- `ON ALL VIEWS` statement, which will not parse.
 
 -- V5 The mirror really does leave the legacy columns alone.
 select * from data.v_environmental_mirror limit 5;
@@ -356,9 +444,15 @@ select t.typname, format_type(t.typbasetype, t.typtypmod) as base,
 
 -- V9 The open privilege question from file 0006 section 5. This answers "does the role hold
 --    REFERENCES", not "does inserting across an FK require it" — only a real insert does that.
-select has_table_privilege('service_role','data.location','references') as can_reference;
--- If `f`: nothing is wrong yet. Watch the first live sync for 42501 on data.location. Only
--- that error, in an isolated database, settles whether the grant is genuinely required.
+--    Both rows below are the complete FK target list of the pack (file 0006 §5); anything
+--    outside them has no foreign key and needs nothing.
+select 'data.location' as target,
+       has_table_privilege('service_role','data.location','references') as can_reference
+union all
+select 'data.satellite_layers',
+       has_table_privilege('service_role','data.satellite_layers','references');
+-- If `f`: nothing is wrong yet. Watch the first live sync for 42501 naming one of these two.
+-- Only that error, in an isolated database, settles whether the grant is genuinely required.
 ```
 
 ## 8. Rollback
@@ -421,16 +515,19 @@ If every count is 0, this rollback is genuinely free. If they are not, snapshot 
 before running it — dropping a table that holds collected data is a data-destruction event,
 not a schema change.
 
-`drop schema data` also strands the four `alter default privileges in schema data grant …`
+`drop schema data` also strands the three `alter default privileges in schema data grant …`
 statements from file 0006 (they were scoped to that schema). If you want them gone explicitly,
 reverse them **before** dropping the schema:
 
 ```sql
 alter default privileges in schema data revoke all on tables    from service_role;
 alter default privileges in schema data revoke all on sequences from service_role;
-alter default privileges in schema data revoke all on views     from service_role;
 alter default privileges in schema data revoke all on functions from service_role;
 ```
+
+There is deliberately no `on views` line: `ALTER DEFAULT PRIVILEGES … ON VIEWS` is not
+PostgreSQL syntax (the grammar rejects it at the word `views`), and the TABLES entry above is
+what reverses the grant that covered the views.
 
 ### 8b. Irreversible part — removing the domains and the schema
 
