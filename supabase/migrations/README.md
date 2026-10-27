@@ -49,6 +49,30 @@ Each file is safe to re-run: `create table if not exists`, `create index if not 
 `add column if not exists`, `create or replace view/function`, and `do $$` guards that only
 act when something is genuinely missing.
 
+A seventh file sits in this directory but is **not part of this pack**:
+
+```
+20261027000100_market_intel_view_lockdown.sql   revoke anon/authenticated SELECT on the
+                                                legacy unified_market_intel view (H-6)
+```
+
+It has its own review and its own apply decision, and it has no dependency on the pack at all —
+the object it touches is the legacy harvester view, which none of the six files creates, drops or
+alters. It also sorts last, so `supabase db push` cannot apply it before the pack. Conversely,
+and this matters while the pack is still unapplied: `db push` applies *every* pending file, so it
+cannot be used to land only the lockdown. Paste that file's sections 1-3 into the SQL Editor for
+that. See section 10.
+
+Before that file is applied, **P8 below is the pre-flight**: it is read-only, it captures the
+view's original ACL (which the lockdown's rollback section 4a cannot do without), and it answers
+the questions the lockdown's guard refuses to guess — whether `PUBLIC` holds SELECT, whether
+`service_role` can read the view and all three joined base tables, whether the executing role is
+allowed to alter the view at all, and what the server version is. If `public_has_select` comes back
+true, the lockdown is the wrong patch for this project and needs a reviewed decision about `PUBLIC`
+first. When it is applied, apply it inside an explicit `begin;` / `commit;` — the dashboard editor's
+atomicity for a pasted multi-statement script has **not** been verified on this project, and there
+is no local PostgreSQL here to check it against (see section 2 of that file, note 5e).
+
 Two of those guards are worth naming, because "rerunnable" hides a real decision in them:
 
 - **Domains.** `CREATE DOMAIN` has no `IF NOT EXISTS` in PostgreSQL, so file 0001 creates
@@ -127,6 +151,17 @@ How, so the result can be reproduced or doubted:
 | `…0004_data_exchange_and_indicators` | 33 | 0 |
 | `…0005_data_satellite_observations` | 26 | 0 |
 | `…0006_data_sync_bookkeeping` | 36 → 34 | 2 found, both removed |
+| `20261027000100_market_intel_view_lockdown` | 4 | 0 |
+
+The last row was parsed on 2026-10-27, again after the revision described in section 10, with the
+same harness in a fresh instance per file, alongside the two `harvester/` scripts the lockdown
+mirrors (`recreate_view.sql`: 4 statements; `setup_normalization.sql`: 6; 0 failures each) and
+file 0003 as a regression control (47 statements, unchanged). Also parsed the same day, 0 failures:
+the P8 pre-flight below (1 `SelectStmt`), the migration's three de-commented verification queries
+(3 `SelectStmt`), all 9 `sql` blocks of this README (43 statements) and of
+`docs/SECURITY_REVIEW.md` (20 statements). The harness was checked against itself with deliberately
+broken input (`select 1 from aclexplode(x) a wher 1=1;` → reported the expected syntax error), so
+its PASS results are not vacuous.
 
 The two failures were `grant select on all views in schema data to service_role;` and
 `alter default privileges in schema data grant select on views to service_role;`, each
@@ -141,10 +176,28 @@ What a grammar check does **not** buy you, and where the risk therefore still si
 
 - **PL/pgSQL bodies are not validated.** `DoStmt` and `CreateFunctionStmt` parse as containers;
   PostgreSQL only checks the body text when the language handler runs, i.e. at apply time. The
-  three `do $$` guards in 0001, the one in 0003 and the two lease functions in 0006 were read by
-  hand instead — which did find two real defects (an undeclared loop variable, and a
-  `int2vector::int2[]` cast that is not in the grammar), but hand-reading is not a parse and
-  should not be reported as one.
+  three `do $$` guards in 0001, the one in 0003, the two lease functions in 0006 and the guard in
+  `20261027000100` were read by hand instead — which did find two real defects (an undeclared
+  loop variable, and a `int2vector::int2[]` cast that is not in the grammar), but hand-reading is
+  not a parse and should not be reported as one. This is not laziness: the WASM build ships
+  `parsePlpgsql`/`raw_parse_plpgsql`, and probing it with deliberately broken bodies (`selct 1`,
+  an unbalanced `end if`) returned `plpgsql_funcs: []` and an **empty error** every time, for
+  `do` blocks and for `create function` wrappers alike. It reports nothing about the body, so it
+  cannot be cited as a check. The only real test for a body is an apply against a throwaway
+  database, which is what section 9 says is still outstanding.
+
+  The 20261027000100 guard earned that hand-reading its keep: the first draft had two `RAISE`
+  format defects this tooling cannot see and a live apply would have hit immediately — `%%` where a
+  `%` placeholder was meant, which leaves an argument unconsumed and aborts with
+  `too many parameters specified for RAISE`. Both were fixed, and the revised guard is now audited
+  with a quote-aware local checker rather than by eye alone. Re-run after the second review round
+  added three more aborts: 10 `RAISE` statements found (9 `EXCEPTION`, 1 `NOTICE`), 0 literal
+  `%%`, placeholder count equal to top-level argument count on every one of them (0, 1, 2, 1, 2, 1,
+  0, 0, 1 against 0, 1, 2, 1, 2, 1, 0, 0, 1, and 7 against 7 in the notice). That checker was
+  itself tested by injecting both defects into a copy, which it reported correctly
+  (`placeholders=7 args=8 <<< MISMATCH`, `mismatches=1`, `literal %% in guard: 1`). It is a text
+  audit, not a PostgreSQL validation: it cannot see a wrong variable name, a bad expression, or an
+  unbalanced `end if`.
 - **No semantic analysis.** Object existence, `has_*_privilege()` argument shapes, whether
   `security_invoker` is accepted on your server version, FK targets, and every privilege name
   are outside what a raw parser can see.
@@ -247,6 +300,133 @@ select c.relname, c.relkind, c.relowner::regrole,
 select pg_get_viewdef('public.unified_market_intel'::regclass, true) as view_definition;
 ```
 
+#### P8 — the before-state for the H-6 lockdown (read-only, not yet executed)
+
+`20261027000100_market_intel_view_lockdown.sql` revokes SELECT on
+`public.unified_market_intel` from `anon` and `authenticated` and sets
+`security_invoker`. **STRICTLY READ-ONLY**: catalog and privilege metadata only — no grant, no
+revoke, no comment, no alter, no insert/update/delete, nothing that writes. It has **NOT been
+executed anywhere**, because nothing in this pack can be executed from this machine; it is
+prepared for a human to run in the Supabase SQL Editor.
+
+Run it BEFORE applying the lockdown and keep the output. It is the record of the original ACL
+that section 4a of that file needs in order to restore anything exactly — after the revoke has
+run, the before-state is unrecoverable from the database.
+
+One row. Every object reference goes through `to_regclass()`, every role reference through
+`to_regrole()`, and the view itself arrives by a `LEFT JOIN`, so a missing object or a missing
+role yields NULL instead of aborting the query — for a pre-flight that must report rather than
+fail, that distinction is the whole design. Read NULL as **"not measured on this project"**, never
+as "denied": `false` is only ever returned where the question was actually answerable (a table that
+exists, a role that exists, an ACL that exists). `relacl IS NULL` is likewise reported as the
+default-privileges state rather than as "no grant exists". `aclexplode()` renders the ACL with
+grantee OID `0` labelled **`PUBLIC`** — the pseudo-role an ordinary
+`information_schema.role_table_grants` query (P7 above) hides, and the one case the lockdown
+refuses to guess about. A grantee whose OID has no `pg_roles` row renders as `role-oid-N` rather
+than as a blank name, so an orphaned or unusual grantee cannot be mistaken for "nobody".
+`relacl_readable` is the labelled rendering to review; `relacl_raw` (the same `aclitem[]` cast to
+text, because that is what most clients can print) is the byte-level record to keep.
+`svc_is_superuser` and `svc_bypassrls` are reported side by side because they are not
+interchangeable: superuser answers the grant question for you, BYPASSRLS does not grant table
+SELECT at all.
+
+```sql
+-- P8 before-state for 20261027000100_market_intel_view_lockdown.sql. READ-ONLY: metadata only,
+--    no grant/revoke/comment/alter/DML. Run BEFORE applying the lockdown and keep the output.
+select
+  current_setting('server_version')                       as server_version,
+  current_setting('server_version_num')::int              as server_version_num,
+  current_user                                            as executed_as,
+  (c.oid is not null)                                     as view_exists,
+  n.nspname                                               as view_schema,
+  c.relname                                               as view_name,
+  c.relkind::text                                         as relkind,
+  pg_get_userbyl(c.relowner)                              as view_owner,
+  coalesce(array_to_string(c.reloptions, ','),
+           '(NULL: a plain view, runs as its OWNER)')     as reloptions,
+  coalesce((select string_agg(
+              case when a.grantee = 0 then 'PUBLIC'
+                   else coalesce(r.rolname, 'role-oid-' || a.grantee::text) end
+              || '=' || a.privtype::text
+              || case when a.is_grantable then '*' else '' end
+              || '/' || coalesce(g.rolname, 'role-oid-' || a.grantor::text), ', ')
+            from aclexplode(c.relacl) a
+            left join pg_roles r on r.oid = a.grantee
+            left join pg_roles g on g.oid = a.grantor),
+           '(NULL relacl: default privileges; for a view that is OWNER ONLY, no PUBLIC entry)')
+                                                          as relacl_readable,
+  c.relacl::text                                          as relacl_raw,
+  -- The grant the lockdown cannot cancel selectively. If this is true, `revoke ... from anon,
+  -- authenticated` fixes nothing, the lockdown's guard aborts on purpose, and the decision about
+  -- PUBLIC has to be made by a reviewer instead of by a migration.
+  case when c.relacl is null then false
+       else exists (select 1 from aclexplode(c.relacl) a
+                     where a.grantee = 0 and a.privtype = 'r') end          as public_has_select,
+  case when c.relacl is null then false
+       else exists (select 1 from aclexplode(c.relacl) a
+                     join pg_roles r on r.oid = a.grantee
+                    where r.rolname = 'anon' and a.privtype = 'r') end      as anon_direct_select,
+  case when c.relacl is null then false
+       else exists (select 1 from aclexplode(c.relacl) a
+                     join pg_roles r on r.oid = a.grantee
+                    where r.rolname = 'authenticated' and a.privtype = 'r') end as auth_direct_select,
+  case when c.relacl is null then false
+       else exists (select 1 from aclexplode(c.relacl) a
+                     join pg_roles r on r.oid = a.grantee
+                    where r.rolname = 'service_role' and a.privtype = 'r') end  as svc_direct_select,
+  -- What each role can actually do, inheritance included. `anon_direct_select` false with
+  -- `anon_effective_select` true can only mean the privilege arrives through PUBLIC or a granted
+  -- role — the case the lockdown refuses to guess about. The `case` wrappers exist so a missing
+  -- view yields NULL ("not measured") instead of handing has_table_privilege() an empty OID, whose
+  -- behaviour differs across versions, and so a missing ROLE yields NULL too — has_table_privilege
+  -- raises `role does not exist` and would abort the whole pre-flight, which must report instead of
+  -- failing. NULL therefore always means "not measured here", never "denied".
+  case when c.oid is null or to_regrole('anon') is null then null
+       else has_table_privilege('anon',          c.oid, 'select') end as anon_effective_select,
+  case when c.oid is null or to_regrole('authenticated') is null then null
+       else has_table_privilege('authenticated', c.oid, 'select') end as auth_effective_select,
+  case when c.oid is null or to_regrole('service_role') is null then null
+       else has_table_privilege('service_role',  c.oid, 'select') end as svc_effective_select,
+  -- The lockdown's own prerequisites. security_invoker makes the view read the base tables as the
+  -- CALLING role, so service_role needs these directly; bypassrls does not supply them. A missing
+  -- base table reports false — the honest answer, since the harvester cannot read what does not
+  -- exist, and the migration's guard refuses that case too. A missing service_role reports NULL:
+  -- the role's existence is a separate question from the table's, and conflating them would hide
+  -- the reason nothing could be read.
+  to_regrole('service_role') is not null                            as service_role_exists,
+  case when to_regrole('service_role') is null then null
+       when to_regclass('public.market_intelligence') is null then false
+       else has_table_privilege('service_role', to_regclass('public.market_intelligence'), 'select') end as svc_select_market_intelligence,
+  case when to_regrole('service_role') is null then null
+       when to_regclass('public.exchange_rates') is null then false
+       else has_table_privilege('service_role', to_regclass('public.exchange_rates'), 'select') end as svc_select_exchange_rates,
+  case when to_regrole('service_role') is null then null
+       when to_regclass('public.environmental_data') is null then false
+       else has_table_privilege('service_role', to_regclass('public.environmental_data'), 'select') end as svc_select_environmental_data,
+  -- Role attributes, reported rather than assumed: a superuser bypasses the grant question
+  -- entirely, and BYPASSRLS does NOT grant table SELECT, so the two must not be read as one.
+  (select rolsuper     from pg_roles where rolname = 'service_role') as svc_is_superuser,
+  (select rolbypassrls from pg_roles where rolname = 'service_role') as svc_bypassrls
+ from (values (1)) as driver(rownum)
+ left join pg_class c     on c.oid = to_regclass('public.unified_market_intel')
+ left join pg_namespace n on n.oid = c.relnamespace;
+```
+
+`server_version_num` below 150000 means the lockdown cannot set `security_invoker` here at all.
+Three `true`s in the `svc_select_*` columns mean it can be set safely; a `false` is not an error
+to work around, it is a separate permission decision. Those two prerequisite groups had **no
+production measurement** when `20261027000100_market_intel_view_lockdown.sql` was drafted — the
+migration guards them instead of assuming them, and P8 is how a reviewer checks them.
+
+`public_has_select = true` is the result that stops the lockdown rather than fixing it. If SELECT
+was granted to the `PUBLIC` pseudo-role, `revoke … from anon, authenticated` changes nothing at
+all (those roles keep inheriting the privilege), and the only honest response is to report it for
+a reviewed decision about `PUBLIC` — which is why the migration raises rather than reaching for
+`revoke … from public`, an operation that would strip privileges every other role inherits,
+`service_role` included. Cross-check the two readings: `anon_direct_select = false` together with
+`anon_effective_select = true` means the privilege arrives through `PUBLIC` or through role
+membership, not through a named grant.
+
 ### 3a. What the production pre-flight established (and what it did not)
 
 Run read-only against the production project on 2026-10-27. Nothing in this pack has been
@@ -286,8 +466,9 @@ applied, so every statement below describes the schema **before** these migratio
   remain owner-rights read paths. Hosted Supabase projects are 15+, but that is platform
   knowledge, not a measurement — run P0 and paste the number.
 - Still unverified, and not made less unverified by this pack: what `anon`/`authenticated`
-  may read through `public.*` (P7), and the security mode of `public.unified_market_intel`
-  (section 10).
+  may read through `public.*` (P7), the ACL of `public.unified_market_intel` including whether
+  `PUBLIC` holds SELECT, that view's owner and `reloptions`, the server version, and whether
+  `service_role` holds SELECT on the three joined base tables (all of it: P8).
 
 If **P1** shows `public.environmental_data` with extra `not null` columns beyond
 `location_name` and `date`, stop: the climate mirror would fail on insert, and file 0001
@@ -602,7 +783,9 @@ Step 4 failing is information, not an obstacle. Reaching for `cascade` there is 
 
 ## 9. Explicitly not in this pack
 
-- **No execution.** These files have not been run against any database, local or production.
+- **No execution.** These files have not been run against any database, local or production. The
+  drafted lockdown (`20261027000100`, section 2) has not been run either, and nothing in it has
+  been applied to the live project.
 - **No changes to `datasets`, `insights`, storage buckets, or any authentication policy.**
   The stage-1 ownership work and its open questions (`insights.user_id`, `datasets.user_id`)
   are untouched; the V-1 verification results are still outstanding.
@@ -635,6 +818,58 @@ its own review; it must not ride along inside a data-migration PR, and it must n
 guessing which readers depend on it — the live dashboard can break on a revoke the way it can
 break on a bad migration.
 
+**Status of that separate change, 2026-10-27 (revised after review):** drafted, unapplied, and
+deliberately still unapplied — see `20261027000100_market_intel_view_lockdown.sql` (section 2)
+and the P8 pre-flight above. It is exactly the scoped version of this question: one object,
+`revoke select` from `anon`/`authenticated` plus `security_invoker = true`, nothing about
+`service_role`, nothing about the three base tables, nothing about `PUBLIC`, nothing about
+ownership or default privileges. The "which readers depend on it" guessing was replaced by a grep
+of the whole app: no file in `app/`, `components/`, `hooks/`, `services/` or `lib/` references
+that view (the only near-hits anywhere in those directories are two uses of the literal string
+`'exchange_rates'` as a *category label*, `lib/data/sources.ts:64` and `lib/data/types.ts:70`, and
+the service-role upsert into `environmental_data`), so the expected breakage is zero. Three things
+the drafts got wrong or left unasked, all now guarded rather than assumed:
+
+- **`PUBLIC`, and inheritance in general.** If SELECT on the view was granted to the `PUBLIC`
+  pseudo-role, revoking it from `anon` and `authenticated` changes nothing — those roles keep
+  inheriting it through membership — while `revoke … from public` would strip privileges from every
+  other role that inherits them, including `service_role`, the one reader that must survive.
+  Neither is a decision a migration should make blind. The guard now reads `pg_class.relacl`
+  through `aclexplode()`, labels grantee OID `0` as `PUBLIC` instead of dropping it, treats a NULL
+  `relacl` as the default-privileges state (for a view: owner only, no `PUBLIC` entry) rather than
+  as "no grant", raises when `PUBLIC` holds SELECT, and raises on the general form of the same
+  trap: either target role able to `select` effectively according to `has_table_privilege()` while
+  holding no direct ACL entry. In both cases it applies nothing and reports the exact ACL for
+  review. P8 answers that question from the catalog; the answer decides whether this patch is the
+  right patch at all.
+- **The two prerequisites `security_invoker` depends on.** PostgreSQL 15+ and
+  `service_role` SELECT on all three joined tables. Neither had ever been measured on production
+  when the first draft was written — P5b measured `usage`/`insert`/`update` on
+  `environmental_data` only, and P0's server version was never captured. They are now checked
+  inside the migration before any statement mutates anything, and P8 is the read-only way to
+  check them from the outside first. That check is not cosmetic: `security_invoker` converts the
+  view's owner-rights shortcut into a direct privilege requirement, so setting it without those
+  grants would trade an anonymous leak for a broken harvester.
+- **Two preconditions the second review round found unchecked** (2026-10-27, after the first
+  revision). The draft *reported* the view's owner but never asked whether the role running the
+  script may alter it — `revoke` and `alter view … set` both require the owner, a member of the
+  owner, or a superuser, so that is now a guard (`pg_has_role(relowner, 'usage')` plus a
+  `rolsuper` fallback), not a comment. And it checked `service_role`'s SELECT on the three joined
+  tables without checking that `service_role` can read **the view itself**, which is the actual
+  harvester dependency; that is now a guard too, with `to_regrole()` so a project lacking the role
+  gets this file's message instead of a raw catalog abort. The same round recorded that
+  **apply-time atomicity is unverified**: the dashboard editor's handling of a pasted
+  multi-statement script was never tested here and there is no local PostgreSQL to test it on, so
+  the apply must be wrapped in `begin;` / `commit;` and the two partial-failure orderings are
+  analysed in that file's note 5e rather than assumed away.
+
+Rollback is documented in two distinct forms, because they are not the same act: **4a** restores
+the captured original ACL exactly (only possible if the pre-change `relacl` was recorded — P8
+before applying, or the guard's own `RAISE NOTICE`, which prints it), and **4b** re-grants the
+*assumed* state, which is what you are left with if the before-state was never captured.
+Everything below still stands as the record of what was unknown when this section was first
+written.
+
 What is established, from the queries in section 3:
 
 - RLS on the legacy tables is `enabled` but **not `forced`**.
@@ -650,8 +885,9 @@ access path" should be made about this project yet:
   `CREATE OR REPLACE VIEW`, i.e. with **owner rights**, and a plain view executes as its owner
   on the tables beneath it. If that owner is `postgres` or the table owner, an `anon` request
   through the view sees rows that the same role could never select directly, and no amount of
-  row policy on `market_intelligence` changes that. Until `relkind`, `relowner`, `reloptions`
-  and `pg_get_viewdef` are all pasted back from P7, the view's security mode is **unresolved**.
+  row policy on `market_intelligence` changes that. Until `relkind`, `relowner`, `reloptions`,
+  `relacl` and `pg_get_viewdef` are all pasted back — P8 for the first four, P7 for the
+  definition — the view's security mode is **unresolved**, and the lockdown stays unapplied.
 - Whether `harvester/setup_normalization.sql` ever ran to completion on production. The script
   defines a policy named `Service role can manage exchange rates` on `exchange_rates`
   (`:46-48`); the pre-flight output showed none, which means the script is at least partially

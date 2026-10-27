@@ -24,7 +24,7 @@ The consequence is that the product's central promise — *"Row-level data isola
 | **Medium** | 5 | M-1, M-2, M-3, M-4, M-5 |
 | **Low** | 1 | L-1 |
 
-**If you do nothing else before an incubation demo, fix C-1, C-2 and H-6.** C-1 is a live, unauthenticated endpoint that spends your paid quota; C-2 lets any caller write into any user's records; H-6 is an anonymous read path that is already publishing 122 scraped market rows, measured in production (§10 of `supabase/migrations/README.md`, and §9a below). C-3's intent is wrong but its bucket does not exist, so it is latent rather than live — see §9a.
+**If you do nothing else before an incubation demo, fix C-1, C-2 and H-6.** C-1 is a live, unauthenticated endpoint that spends your paid quota; C-2 lets any caller write into any user's records; H-6 is an anonymous read path that is already publishing 122 scraped market rows, measured in production (§10 of `supabase/migrations/README.md`, and §9a below). C-3's intent is wrong but its bucket does not exist, so it is latent rather than live — see §9a. For H-6 a reversible patch is drafted and **unapplied**: `supabase/migrations/20261027000100_market_intel_view_lockdown.sql`, validation plan under "H-6 remediation patch". It is gated on one read-only query first (P8 in `supabase/migrations/README.md`), because whether the fix can work at all depends on an ACL fact that has never been measured — specifically whether `PUBLIC` holds the SELECT that a revoke aimed at `anon` cannot take away.
 
 ---
 
@@ -470,10 +470,24 @@ pages whose terms of use were never reviewed here. For an incubator submission t
 data-licensing exposure and a competitive leak, and it is live today, independent of the six
 unapplied migrations.
 
-**What is still not established.** The view's owner, `relkind` and `reloptions` — i.e. whether
-the fix is `alter view … set (security_invoker = true)` (which would then require base-table
-grants and policies to be reviewed, and could break the harvester's own readers) or a revocation
-of `select … to anon, authenticated`. Choosing between them needs the P7 output, not this probe.
+**What is still not established.** The view's owner, `relkind`, `reloptions` and — the one that
+decides whether the prepared fix can work at all — its **`relacl`**, i.e. whether the anonymous
+SELECT is a direct grant to `anon` or is inherited from the `PUBLIC` pseudo-role. That matters
+because a `REVOKE` only removes privileges held *directly* by the named roles: if `PUBLIC` holds
+SELECT, revoking from `anon`/`authenticated` changes nothing for an anonymous caller, and
+PostgreSQL answers such a REVOKE with a warning rather than an error, so the apply still looks
+clean. It also matters whether `security_invoker = true` is even available (PostgreSQL 15+) and
+whether `service_role` holds `select` on the three joined tables directly, since that setting
+removes the owner-rights shortcut the harvester currently relies on. Choosing and applying any of
+this needs the P8 catalog output, not this probe.
+
+*Same day, after the patch was drafted and then reviewed:* the prepared fix does **both** halves,
+and it resolves the either/or by refusing to apply either half on a project where it would be
+wrong — see "H-6 remediation patch" directly below. The first draft assumed the revoke would land;
+review showed the `PUBLIC` case in which it silently would not, so the patch now detects that and
+stops. Running P8 still matters independently of the guard, because P8 is what captures the
+original ACL that an exact rollback needs, and because the guard prints the same facts a reviewer
+should confirm for themselves.
 
 **I changed nothing.** No grant, policy, or view definition was altered; this finding is the
 measurement only. Remediation should be its own approved change with a read-only before/after
@@ -485,9 +499,252 @@ wired up.
   gap between `0-0/122` and `*/0` is the finding.
 - `select relname, relkind, pg_get_userbyl(relowner), reloptions from pg_class where relname='unified_market_intel';`
   and `select pg_get_viewdef('public.unified_market_intel'::regclass, true);` — paste both before
-  touching permissions.
+  touching permissions. Neither one shows *who* can read the view, so run **P8**
+  (`supabase/migrations/README.md`, under section 3) for that: it is read-only, it expands
+  `relacl` with `PUBLIC` named explicitly, and it is the capture a later rollback needs.
 - After any fix, both `curl` commands must return `*/0` or `401`, and the harvester's own reads
   must be re-checked from the service-role side.
+
+### H-6 remediation patch — prepared, not applied (2026-10-27)
+
+One new file: `supabase/migrations/20261027000100_market_intel_view_lockdown.sql`. It is the
+separate, approved change that `supabase/migrations/README.md` section 10 said must not ride
+along inside the data pack, so it carries a later filename, its own review, and its own apply
+decision. Production is unchanged: **nothing has been executed, committed, pushed or deployed.**
+
+**What it does.** Two statements against one object, behind a guard that reads the catalog first:
+
+```sql
+revoke select on public.unified_market_intel from anon, authenticated;
+alter view public.unified_market_intel set (security_invoker = true);
+```
+
+`anon` and `authenticated` by name, never `from public` — revoking from the `public` pseudo-role
+would strip privileges every role inherits through it, including `service_role`, which is the one
+reader that must survive. `security_invoker` is the durable half: with it the view reads the base
+tables as the calling role, so an anonymous caller gets what RLS already gives anon, which the
+probe above measured as zero rows. A third statement writes a `comment` on the view so the next
+reader sees why it is closed; it is the only cosmetic residue a rollback has to clean up.
+
+**What it deliberately does not do.** No change to `service_role` or ownership. No change to
+grants, policies or RLS on `market_intelligence`, `exchange_rates` or `environmental_data` (that
+anon appears to hold `select` on those directly is a separate open question in README section 10,
+with its own evidence requirement). No change to project default privileges, because that decides
+the permissions of every future `public.*` object at once. And **no revoke from `PUBLIC`**: if the
+guard finds that entry it raises and applies nothing, because the only alternative would be an
+unasked-for privilege strip that hits every other role too. That finding is reported for review
+rather than fixed by a migration.
+
+**The two risks the first draft did not surface, now guarded.**
+1. Once the view runs as its invoker, `service_role` needs `select` on each joined table
+   directly, because the owner-rights shortcut is gone. The harvester reads this view through the
+   service role (`harvester/pre_flight_check.py:12`, `intelligence_generator.py:18`), so a
+   lockdown that traded an anonymous leak for a broken pipeline would be a bad trade. The guard
+   checks all three tables with `has_table_privilege()` and aborts before touching anything. **This
+   is a check, not a measurement**: no production query has ever established those three grants
+   (P5b measured `usage`/`insert`/`update` on `environmental_data` only), so the review record is
+   "assumed, and now refused-if-absent", with P8 as the way to measure it before applying.
+2. The `PUBLIC` blind spot described above, generalized. The guard now fetches `pg_class.relacl`,
+   expands it with `aclexplode()`, labels grantee OID `0` as `PUBLIC` instead of letting its NULL
+   role name read as "no grantee", treats a NULL `relacl` as the default-privileges state (for a
+   view that is owner-only, with no `PUBLIC` entry) rather than as evidence of nothing, and raises
+   before any mutation in two distinct ways: `PUBLIC` holding `r`, **and** either target role being
+   able to `select` effectively (`has_table_privilege`, which accounts for membership and `PUBLIC`)
+   while holding no direct ACL entry — the general form of "the revoke would remove nothing".
+   `service_role`'s base-table check likewise now fails loudly on a missing table instead of
+   aborting with a raw catalog error, and treats a NULL privilege answer as not-granted
+   (`is not true`) rather than as a pass.
+
+**The second review round found two preconditions written about but never actually tested, plus an
+unverified assumption about how the apply runs.**
+3. *Can the role running this script do it at all?* The draft printed the view's owner and left a
+   comment saying ownership was required, which is documentation, not a guard. Both mutations need
+   the owner, a member of the owner, or a superuser, so that is now checked with
+   `pg_has_role(relowner, 'usage')` and a `rolsuper` fallback. It matters because a lesser role
+   would fail at the *statement*, and if the paste is not atomic that means the file lands
+   half-applied — see item 5.
+4. *Can `service_role` still read **the view itself**?* The draft checked the three joined base
+   tables only, while the dependency it exists to protect is a read of `unified_market_intel`. That
+   is now checked directly, behind `to_regrole()` so a project without the role gets this file's
+   message instead of a raw `role does not exist` abort. Statement 2 does not name `service_role`,
+   and the `PUBLIC` guard has already refused the one route by which that read could be
+   inheritance-only, so a false answer here means the repository's own record of the harvester's
+   role is wrong — which is a reason to stop, not to proceed.
+5. **Apply atomicity is NOT verified.** `supabase db push` wraps each migration in a transaction,
+   but whether the dashboard SQL Editor commits a pasted multi-statement script as one transaction
+   or statement-by-statement has never been checked on this project, and there is no local
+   PostgreSQL here to check it against (five of the relevant binaries are absent, see the table
+   below). The apply therefore instructs an explicit `begin;` / `commit;`, and note 5e of the
+   migration analyses both partial orderings instead of pretending they cannot happen: a landed
+   `revoke` with a failed `alter view` closes the hole but loses the durable half; a landed
+   `alter view` with a failed `revoke` still returns nothing to an anonymous caller because
+   `security_invoker` defers to the base tables, which the probe measured at zero rows — but that
+   has to be confirmed with query 6c, not assumed.
+
+**Every guard condition, in file order — all nine aborts precede every mutation.** Line numbers
+are from the file as committed (`do $$` spans 86–268; the first mutating statement is the `revoke`
+at line 280, then `alter view` at 287 and `comment on view` at 289).
+
+| # | Condition that aborts the apply | `if` / loop | `raise` |
+| --- | --- | --- | --- |
+| 1 | the view is absent (absent ≠ pass; it would claim a fix it never made) | 113 | 114 |
+| 2 | it exists but `relkind <> 'v'` (a matview or foreign table is a different change) | 118 | 119 |
+| 3 | the executing role is not the owner, a member of the owner, or a superuser, so it cannot revoke on or alter this view | 133 | 135 |
+| 4 | `PUBLIC` holds `r` — inherited, so a revoke aimed at `anon` removes nothing; reported, never revoked automatically | 173 | 175 |
+| 5 | `anon` or `authenticated` can effectively `select` with no direct ACL entry (the general inheritance trap) | 188 | 198 |
+| 6 | `server_version_num < 150000`, so `security_invoker` would be a mid-apply syntax error | 208 | 209 |
+| 7 | this project has no `service_role` at all (checked via `to_regrole`, so the pre-flight reports rather than aborts raw) | 224 | 225 |
+| 8 | `service_role` cannot `select` from the view even before this change — the harvester premise is false | 229 | 230 |
+| 9 | `service_role` lacks `select` on any joined base table, or that table does not exist here | 242 | 254 |
+
+Each one is a `raise exception`, which aborts the enclosing transaction, so a failed guard leaves
+the object exactly as it was; a passing guard emits one `RAISE NOTICE` (line 262) containing owner,
+`relkind`, `reloptions`, server version and number, the executing role, the confirmation that
+`service_role` reads the view and all three joined tables, and the **original ACL**, then falls
+through to the revoke and the `security_invoker` set.
+
+**The original ACL is recorded, because rollback needs it.** The guard's success
+`RAISE NOTICE` prints the pre-change ACL in the same rendering section 6 uses, and the pre-apply
+capture is query P8 in `supabase/migrations/README.md`. Without one of those two, "restore the
+previous permissions" is not achievable — the after-state of the revoke tells you nothing about
+what else the ACL contained (other grantees, `WITH GRANT OPTION`, a `references` privilege, a
+`PUBLIC` entry).
+
+**Undo paths, closed.** `harvester/recreate_view.sql` begins with `DROP VIEW IF EXISTS`, and a
+dropped view is a new object whose ACL and reloptions are freshly assigned — so both harvester
+scripts that create this view (`recreate_view.sql`, `setup_normalization.sql`) now end with the
+same two statements. `create or replace view` alone keeps the ACL and reloptions, and none of the
+six pack files creates, drops or alters this view, so no pending migration undoes the fix. Those
+two appended blocks carry an explicit caveat the migration does not need: they are plain scripts
+with no guard, so on a project where `PUBLIC` holds SELECT they would run "successfully" without
+closing anything. P8 is how that is detected before relying on them.
+
+#### Validation plan
+
+Marked **executed** (done here, on this machine, against nothing but the repository) or
+**pending** (needs approval, a database, or a browser). Anything pending is not a claim.
+
+Executed — local, reversible, no database involved. Re-run in full on the revised patch,
+2026-10-27, after the second review round added guards 3, 7 and 8 and the P8 role checks. The line
+numbers and counts below are from that re-run, not from the earlier draft.
+
+| Check | Command / method | Result |
+| --- | --- | --- |
+| Real PostgreSQL grammar, revised migration | `node one.mjs …/20261027000100_market_intel_view_lockdown.sql` (libpg_query 16 WASM, `pg-query-emscripten`, grammar version 160001, one fresh instance per file) | PASS — 4 statements, 0 failures: `DoStmt`, `GrantStmt`, `AlterTableStmt`, `CommentStmt` |
+| Real grammar, both edited harvester scripts | same harness, re-run after this revision's comment edits | PASS — `recreate_view.sql` 4 statements (`DropStmt`, `ViewStmt`, `GrantStmt`, `AlterTableStmt`); `setup_normalization.sql` 6 (`CreateStmt`, `ViewStmt`, `AlterTableStmt`×2, `CreatePolicyStmt`, `GrantStmt`); 0 failures each |
+| Grammar regression on the untouched pack | same harness on all six pack files | PASS — 9 / 37 / 47 / 33 / 26 / 34 statements, 0 failures, identical to the previous run |
+| The pre-flight query P8 (now with role-existence checks) | `node mdblocks.mjs supabase/migrations/README.md` + a targeted extract | PASS — README holds 9 ` ```sql ` blocks / 43 statements, 0 failures; P8 is a single `SelectStmt` (5,997 chars after the `to_regrole()` additions) that parses clean |
+| The migration's own verification queries (6a/6b/6c) | de-commented into a scratch file, parsed with the same harness | PASS — 3 `SelectStmt`, 0 failures |
+| Harness negative control | same harness on `select 1 from aclexplode(x) a wher 1=1;` | Correctly reported `syntax error at or near "wher"` — the parser is not vacuous |
+| `RAISE` format-string / argument audit of the guard | `node raisecount.mjs …` (quote-aware local script: `%%` counted separately, top-level commas only) | 10 `RAISE` statements found (9 `EXCEPTION`, 1 `NOTICE`), 0 `%%`, placeholders == args on all ten: 0, 1, 2, 1, 2, 1, 0, 0, 1 placeholders against 0, 1, 2, 1, 2, 1, 0, 0, 1 arguments, and 7 against 7 in the notice. `mismatches=0` |
+| Same checker, negative control | copy with `%%` injected plus an extra `RAISE` argument | Correctly reported `NOTICE placeholders=7 args=8 <<< MISMATCH`, `total=10 mismatches=1` and `literal %% in guard: 1` — the checker is not vacuous (the scratch copy was deleted) |
+| The three new catalog calls (`pg_has_role(oid, text)`, `to_regrole(text)`, `rolsuper` sub-select) | read against the PostgreSQL privilege-function signatures; parsed as SQL | **Grammar PASS, semantics UNVALIDATED.** A raw parser cannot confirm a function signature exists, so these are exactly as unproven as the rest of the body until a real server parses it. The `coalesce(..., false)` around `rolsuper` and the `is not true` around `has_table_privilege` are deliberate: a NULL answer must never read as a pass. |
+| PL/pgSQL *body* of the guard | `raw_parse_plpgsql()` probed with an intentionally broken body (`selct 1`, unbalanced `end if`) | **NOT VALIDATED — and NOT database-validated.** This WASM build reports no error for any body, so the guard's statements (`aclexplode()`, `has_table_privilege()`, `pg_has_role()`, the ACL sub-selects) were checked by reading plus the two text audits above. There is no local PostgreSQL here, so no apply has confirmed them. |
+| No local database to validate against | `command -v psql docker initdb pg_ctl postgres` | All five absent. **Apply test NOT RUN**; no claim of a successful apply is being made. |
+| Ordering | `diff <(ls -1 supabase/migrations/*.sql) <(ls -1 … \| sort)` | Identical; `20261027000100` sorts after `20261026000600`. |
+| No dashboard dependency | grep of `app/ components/ hooks/ services/ lib/` for the four objects and for `price_usd_per_mt`, `net_opportunity_value`, `rate_to_usd`, `region_market`, `commodity_name` | Zero references to `unified_market_intel` and `market_intelligence`, zero to the five derived columns, and no client `.from()`/`.table()` call naming `exchange_rates` either. The only hits are two occurrences of the literal string `'exchange_rates'` used as a **category label** (`lib/data/sources.ts:64`, `lib/data/types.ts:70`), plus the documented service-role upsert into `environmental_data` (`lib/data/sync.ts:433,442`) — neither is a reader of this view, and both are named rather than dropped from the count. Expected application breakage from the revoke is **none**. |
+| Markdown fences in `docs/SECURITY_REVIEW.md` | `node mdblocks.mjs docs/SECURITY_REVIEW.md` | PASS — 5 `sql` blocks / 20 statements, 0 failures (also proves the P7/P8 fence repair) |
+| TypeScript | `npx --no-install tsc --noEmit` | **exit 0, no output.** Re-run for this revision even though no `.ts`/`.tsx` file changed. |
+| Production build | **NOT RUN** | `next build` was not executed for this revision; nothing in the patch touches application source, so it would test June's code, not this change. No build pass is being claimed. |
+| Test suite | does not exist | `package.json` has no test runner; there is no `npm test` to run. |
+| SQL executed against any database | — | **None.** No connection was made, no statement sent, no Supabase object read or written by this patch. |
+
+Pending — each needs the stated approval before it is run:
+
+1. **Before-state record — query P8** (`supabase/migrations/README.md`, the `#### P8` block under
+   section 3). Read-only: catalog and privilege metadata, one statement, no grant/revoke/comment/
+   alter/DML. **NOT EXECUTED ANYWHERE** — it is prepared for a human to paste into the Supabase
+   SQL Editor. It returns `server_version_num`, the view's schema/name/`relkind`/owner/`reloptions`/
+   `relacl`, explicit direct-grant booleans for `anon`, `authenticated`, `service_role` **and
+   `PUBLIC`**, effective `has_table_privilege()` results for the same three roles,
+   `service_role`'s `select` on `market_intelligence`, `exchange_rates` and `environmental_data`,
+   whether `service_role` exists at all (`service_role_exists`), and its `rolsuper`/`rolbypassrls`
+   attributes. Read **NULL as "not measured on this project"**, never as "denied" — every object
+   reference goes through `to_regclass()` and every role reference through `to_regrole()` precisely
+   so that a missing view, missing table or missing role reports itself instead of aborting a
+   read-only pre-flight.
+   Keep the output: it is the original ACL that the after-state comparison (step 3) and rollback
+   form 4a depend on, and it is the measurement that replaces the assumptions this review flagged.
+   If `public_has_select` is true, **stop** — the revoke in this patch cannot work, and the decision
+   about `PUBLIC` needs a reviewer, not a migration. Likewise a `false` in any `svc_select_*` column
+   means `security_invoker` would break the harvester, a `false` in `svc_effective_select` means the
+   harvester cannot read this view today (a premise problem, not a patch problem), and a
+   `server_version_num` below 150000 means the second statement is unavailable here at all. Also
+   compare `view_owner` with the role you intend to run the apply as — that is guard 3.
+2. **Apply.** Requires approval, and requires step 1 to have come back clean. Do **not** use
+   `supabase db push` for this: it applies every pending file, which on this project means the six
+   unapplied data migrations arrive with it. Paste sections 1-3 of the migration into the SQL
+   Editor instead, **wrapped in an explicit `begin;` … `commit;`**, and keep the guard's
+   `RAISE NOTICE` output — it prints the original ACL a second time, immediately before it changes.
+   The wrapper is required rather than merely tidy: whether the editor commits a pasted
+   multi-statement script as one transaction **has not been verified on this project**, and there is
+   no local PostgreSQL to verify it against. Note 5e of the migration records what each partial
+   outcome would mean and how to detect it; step 8 is where that gets actually tested.
+3. **After-state record:** re-run queries 6a, 6b and 6c from section 6 of the migration (the same
+   rendering P8 uses, so before and after compare literally). Expected — `reloptions` contains
+   `security_invoker=true`; 6a/6b show no `r` entry for `anon` or `authenticated` and none for
+   `PUBLIC`; 6c returns `f`, `f`, `t`. A `service_role` row is correct and must stay. Read
+   `relacl`, not `information_schema.role_table_grants`, which hides grants made to `PUBLIC` —
+   that omission is exactly how the first draft of this patch acquired its blind spot.
+4. **Anonymous reads denied.** With the anon key only, in a shell variable, never in a file:
+   `GET /rest/v1/unified_market_intel?select=*&limit=1` must be refused (403 / permission denied)
+   instead of the measured `206 content-range 0-0/122`.
+5. **Base tables unchanged for anon.** `GET /rest/v1/market_intelligence?select=*`,
+   `…/exchange_rates?select=*` and `…/environmental_data?select=*` must each still return `*/0` —
+   no protected rows, and the same answer as before the patch, which is the evidence the patch
+   changed exactly one object. Modification is proved from the catalog rather than by sending a
+   write to production: `has_table_privilege('anon', …, 'insert'|'update'|'delete')` must be false
+   for each of those three tables (that function accounts for role membership and for `PUBLIC`, so
+   it answers the real question — a bare `aclexplode(relacl)` reading could show no `anon` row
+   while `PUBLIC` grants everything, the same trap as step 1). A live `POST` probe would prove the
+   same thing by attempting a write against production, so it is not part of this plan unless
+   separately approved.
+6. **Service-role harvester path.** The credential comes from the environment only; nothing below
+   takes a key as an argument or prints one. From a shell that already has `SUPABASE_URL` and
+   `SUPABASE_SERVICE_ROLE_KEY` set:
+
+   ```bash
+   cd C:\Users\lenovo\NexusAgririse\harvester
+   python -c "import os;from supabase import create_client as mk;k=mk(os.environ['SUPABASE_URL'].rstrip('/'),os.environ['SUPABASE_SERVICE_ROLE_KEY']);r=k.table('unified_market_intel').select('*').limit(1).execute();print('service_role view read: OK, rows=',len(r.data or []))"
+   ```
+
+   `OK, rows= 1` is the pass condition. A 42501 here means the guard's `service_role` precondition
+   was bypassed by applying part of the file. The broader alternative is
+   `python pre_flight_check.py` from that same directory, which prints `View
+   'unified_market_intel': ACCESSIBLE` — note it also reads `market_intelligence` (`:33`) and, when
+   `GOOGLE_API_KEY` happens to be set, makes one Gemini request with that key in the query string
+   (`:56`), which is why it is the alternative and not the default.
+7. **Public dashboard.** On the Vercel Preview for the branch that carries this file, open
+   `/dashboard` and the market/exchange boards, and confirm `/api/data/markets` and
+   `/api/data/exchange` still return live publisher data. These routes never touched the view, so
+   the expectation is "identical", and it still has to be observed in a browser rather than
+   inferred from the grep.
+8. **Durability.** In a scratch project: apply the patch, then run the now-patched
+   `harvester/recreate_view.sql`, then repeat check 3. If the ACL reopens, the undo path is still
+   open and the patch is not durable. A scratch project is also the only place the guard's PL/pgSQL
+   body gets a real parse — see the **NOT VALIDATED** row above — and the only place step 2's
+   atomicity question can be settled: paste a script whose second statement is designed to fail and
+   observe whether the first statement survived. Until that is done, the `begin;`/`commit;` wrapper
+   is an instruction, not a verified property of the editor.
+
+Reversal is documented in section 4 of the migration as **two different acts**, because they are
+not the same thing and the first draft blurred them:
+
+- **4a — restore the original privileges exactly.** Only possible if the original ACL was
+  captured *before* applying (P8, or the guard's own `RAISE NOTICE`, which prints it). One `GRANT`
+  is reconstructed per captured entry, keeping the privilege letters and any `WITH GRANT OPTION`,
+  then 6a's rendering is compared against the captured string to prove the restore is literal. If
+  the captured ACL was NULL — default privileges, owner only — the exact restoration is to revoke
+  again, i.e. the reversal is a no-op, because that *was* the original state.
+- **4b — simply give the access back.** `grant select … to anon, authenticated;` plus
+  `alter view … reset (security_invoker);`. This undoes what the patch did on any project, but it
+  does not restore grants the patch never made, so a reviewer comparing before and after ACLs must
+  expect differences unless 4a was used.
+- **4c** clears the `comment`, the only cosmetic residue.
+
+Both forms must run as the view's owner or a superuser — the same ownership requirement the guard
+reports — and both re-open H-6 deliberately, so neither should happen without a reviewed decision
+to publish this view.
 
 ## 5 Medium findings
 
