@@ -314,6 +314,16 @@ Move the above into `supabase/migrations/0001_baseline.sql`, `0002_insights_owne
 
 This machine resolves `generativelanguage.googleapis.com` and `nexus-agririse.vercel.app` but **cannot resolve `api.supabase.co` or `qaidhpvxdmrsjvdcavns.supabase.co`** (`curl` exit 6 for both). **That is a local DNS/network restriction, and I am explicitly not claiming the production Supabase database is down.** Nothing in §4/§5 depends on that unknown; three items do depend on the answers:
 
+> **Amendment, later on 2026-10-27.** The paragraph above was true when written and is now
+> superseded: `*.supabase.co` resolves from this machine, and the read-only probes those three
+> items asked for were run with only the anon key the public browser bundle already ships. The
+> project is reachable and live. Results, and the two findings they produced, are in
+> `docs/SECURITY_REVIEW.md` §9a and H-6, and in `supabase/migrations/README.md` §10a — including
+> that `unified_market_intel` serves **122 rows to an anonymous caller** while
+> `market_intelligence` returns 0, and that the `datasets` storage bucket **does not exist**
+> (`NoSuchBucket`), which makes C-3 latent rather than live. No write was attempted and no
+> permission was changed.
+
 | ID | Probe | Determines |
 |---|---|---|
 | **V-1** | D-1 queries in Supabase Studio → SQL Editor | True schema, constraints, indexes, every live policy. Gates P1-2 and all of D-2/D-3. |

@@ -448,6 +448,16 @@ These are **not** confirmed findings. I could not verify them from this machine,
    nslookup qaidhpvxdmrsjvdcavns.supabase.co
    ```
    A `401`/`404` from your side means the host is fine and my console errors are an artifact. A DNS failure from your side means the project is paused or deleted — which would explain everything.
+   - **Resolved later on 2026-10-27: the host is fine and it was my network.** `nslookup` now
+     returns `104.18.38.10` / `172.64.149.246`, the exact command above returns `401` with no key
+     and, with the anon key already inside the public bundle, `404 PGRST205 — Could not find the
+     table 'public.harvester_status' in the schema cache`. So the project is live and reachable;
+     `harvester_status` is not in the API. Other `public` objects resolve normally
+     (`unified_market_intel`, `market_intelligence`, `datasets`, `insights`), which makes
+     "not in the schema cache" much closer to "does not exist" than to "wrong host". Confirm with
+     `select to_regclass('public.harvester_status');` before anything depends on it.
+     Full measurements and the two findings they changed are in `docs/SECURITY_REVIEW.md` §9a and
+     finding H-6.
 2. **The actual live schema.** Whether `insights` has `user_id`/`dataset_id`, whether `datasets` exists as README describes, what RLS policies are attached, and whether the `datasets` storage bucket is public. `supabase db pull` (or the SQL below) is authoritative. Nothing in the repository proves the production state.
    ```sql
    SELECT table_name, column_name, is_nullable, data_type

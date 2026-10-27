@@ -267,13 +267,19 @@ applied, so every statement below describes the schema **before** these migratio
   dependency: the dashboard's client-side read (`app/dashboard/page.tsx`) is wrapped in
   try/catch, so the freshness chip degrades silently instead of erroring. No migration
   depends on that table.
+- The anon read path through `public.unified_market_intel` was measured on 2026-10-27, after
+  this list was written: **122 rows visible to an anonymous caller**, while
+  `market_intelligence` itself returns 0 to the same key. See section 10a; it is the one
+  production finding in this file that came from outside SQL.
 - RLS is `enabled` but **not `forced`** on the legacy public tables; a service-role-only
   policy exists on `environmental_data`; `service_role` has `bypassrls` plus
   `usage`/`INSERT`/`UPDATE` as expected (P5, P5b).
 - **P6 came back inconclusive.** Hosted Supabase keeps the exposed-schema list in its own
   API configuration, not in `pg_db_role_setting`, so an empty result does not mean `data`
   is unpublished. Confirm in the dashboard (API settings → exposed schemas) before choosing
-  option A in section 6.
+  option A in section 6. Section 10a adds the same conclusion from outside: a `PGRST205` on
+  `data.location` cannot distinguish "unpublished" from "never created", because the pack has
+  not been applied.
 - **P0 was not captured by that run** (it was added afterwards), so the project's
   `server_version_num` is unverified here. The pack needs PostgreSQL 15+ for the four
   `security_invoker` view settings; on an older server those statements fail and the views
@@ -670,3 +676,60 @@ curl "https://<project>.supabase.co/rest/v1/unified_market_intel?select=*&limit=
 longer theoretical; `401`/`404`/permission-denied is the expected answer. Record which you got,
 then decide the fix as its own change: `alter view … set (security_invoker = true)` plus an
 explicit grant review, or a policy rewrite. **Not in this pack.**
+
+### 10a. That probe was run on 2026-10-27, and the answer is the bad one
+
+The network block noted in `docs/PRODUCTION_READINESS_AUDIT.md` lifted, so the read-only probe
+above could be made directly. It was made with **only** the key that is already shipped inside
+the production browser bundle (`/_next/static/chunks/*.js` contains the project host and a
+208-character anon JWT; the values were never printed, copied, or logged here), and with
+`select`-only GETs at `limit=1`. No write, no service-role key, no SQL executed.
+
+| Object, requested as `anon` | HTTP | rows visible to anon |
+| --- | --- | --- |
+| `public.unified_market_intel` | 206 | **122** (`content-range: 0-0/122`) |
+| `public.market_intelligence` | 200 | 0 |
+| `public.environmental_data` | 200 | 0 |
+| `public.exchange_rates` | 200 | 0 |
+| `public.datasets` | 200 | 0 |
+| `public.insights` | 200 | 0 |
+| `public.harvester_status` | 404 | `PGRST205` — not in the API at all |
+
+Read that table as one comparison, because it is the whole finding: the view returns **122 rows**
+while the table underneath it returns **0** to the same role. RLS on `market_intelligence` is
+doing its job against anonymous callers, and `unified_market_intel` steps around it — which is
+the behaviour `harvester/setup_normalization.sql:13` produces, a plain `CREATE OR REPLACE VIEW`
+running with its owner's rights. 122 is also exactly the `market_intelligence` row count P3
+measured from inside SQL, so the view is publishing that entire table, not a subset. The open
+question in the bullet above is therefore no longer theoretical: **an anonymous read path
+exists**, and it serves numbers this repository already documents as unsafe (hard-coded
+`rate_to_usd`, a literal `$150/MT` subtraction).
+
+What the probe still does not establish, and what only the SQL side can:
+
+- The view's `relkind`, owner and `reloptions`. Behaviour proves the bypass, not the
+  mechanism; `security_invoker` could be set and the access could instead come from broad
+  `grant select … to anon` on the base tables. Run P7 and paste it before choosing between
+  `alter view … set (security_invoker = true)` and a grant revocation — they are different
+  fixes with different blast radii.
+- Whether `data` is published to PostgREST. `data.location` returns `PGRST205` here, but the
+  pack has never been applied, so "not published" and "does not exist" are indistinguishable
+  from outside. P6 stays inconclusive for the reason section 3a gives.
+- Whether `harvester_status` is absent or merely unexposed. A 404 on a `public` object that
+  other `public` objects share is weak evidence of absence, but combined with P1 not listing
+  it, section 1's premise that the freshness chip reads a live table should be treated as
+  **unconfirmed** until P7 says otherwise.
+
+Reproduce it without handling any secret:
+
+```bash
+# $ANON is the publishable key already in the browser bundle; paste it into the shell
+# variable, never into a file or a commit.
+curl -s "https://<project>.supabase.co/rest/v1/unified_market_intel?select=*&limit=1" \
+  -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -D - -o /dev/null | grep -i content-range
+curl -s "https://<project>.supabase.co/rest/v1/market_intelligence?select=*&limit=1" \
+  -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -D - -o /dev/null | grep -i content-range
+```
+
+This changes no permission and no policy; it records the measurement. Fixing it is a separate,
+approved change, and it is now the most urgent item in this file — ahead of applying the pack.

@@ -20,11 +20,11 @@ The consequence is that the product's central promise — *"Row-level data isola
 | Severity | Count | IDs |
 |---|---|---|
 | **Critical** | 4 | C-1, C-2, C-3, C-4 |
-| **High** | 4 | H-1, H-2, H-3, H-4 |
+| **High** | 5 | H-1, H-2, H-3, H-4, H-6 (H-5, M-6 and M-7 are numbered in `docs/PHASE_2_REMEDIATION_PLAN.md`, not here) |
 | **Medium** | 5 | M-1, M-2, M-3, M-4, M-5 |
 | **Low** | 1 | L-1 |
 
-**If you do nothing else before an incubation demo, fix C-1, C-2 and C-3.** C-1 is a live, unauthenticated endpoint that spends your paid quota; C-2 lets any caller write into any user's records; C-3 may be publishing uploaded farmer/business files to guessable public URLs right now.
+**If you do nothing else before an incubation demo, fix C-1, C-2 and H-6.** C-1 is a live, unauthenticated endpoint that spends your paid quota; C-2 lets any caller write into any user's records; H-6 is an anonymous read path that is already publishing 122 scraped market rows, measured in production (§10 of `supabase/migrations/README.md`, and §9a below). C-3's intent is wrong but its bucket does not exist, so it is latent rather than live — see §9a.
 
 ---
 
@@ -170,6 +170,12 @@ If the bucket is public — which the code requires — then every uploaded CSV 
 - Read-only check of the live setting (run this yourself — `*.supabase.co` does not resolve from this machine, see §7):
   `curl -s -o /dev/null -w '%{http_code}\n' "https://<project-ref>.supabase.co/storage/v1/object/public/datasets/<known-path>"`
   `200` ⇒ bucket is public (**finding confirmed**); `400/404` with a message mentioning public access disabled ⇒ already private.
+- **Measured later on 2026-10-27, after the DNS block lifted: neither.** That request returns
+  `400 {"error":"Bucket not found","code":"NoSuchBucket"}` — there is no `datasets` bucket in this
+  project, public or private. So C-3 is **latent, not live**: nothing is being published today, and
+  the upload feature is broken outright (`services/storage.ts:12,23` target that bucket). See §9a.
+  Do not "fix" the upload by creating a public bucket — that is precisely how this finding becomes
+  real; create it private and switch the code to signed URLs first.
 - After the fix: the same public-route request must **not** return the file, and `select signedUrl` path must work in-app for the owner and fail for a second test account.
 - New uploads must persist a path (no `https://…/object/public/…`) in `datasets.file_url`; verify with `select file_url from datasets order by created_at desc limit 5;`.
 
@@ -431,7 +437,61 @@ No CSP means any XSS that does land (via the AI-output/DOM path in M-1) has no m
 
 ---
 
+### H-6 — An anonymous caller can read the entire scraped market dataset through a view that bypasses RLS (measured, 2026-10-27)
+
+`supabase/migrations/README.md` section 10 flagged this as unresolved and explicitly *unverified*.
+It is now verified, from outside SQL, with read-only requests.
+
+**Evidence.** Using only the anon key that the production browser bundle already ships (the
+project host and a 208-character anon JWT appear in `/_next/static/chunks/*.js`; values were
+never printed, stored, or committed), a `select`-only GET returns:
+
+```
+GET /rest/v1/unified_market_intel?select=*&limit=1   → 206, content-range 0-0/122
+GET /rest/v1/market_intelligence?select=*&limit=1    → 200, content-range */0
+```
+
+The view returns **122 rows to an unauthenticated-by-session caller**; the table beneath it
+returns **0**. 122 is exactly the `market_intelligence` row count measured from inside SQL during
+the pre-flight, so the view publishes that whole table. `environmental_data`, `exchange_rates`,
+`datasets` and `insights` all correctly return 0 rows to the same key, which is what makes this
+one comparable result a real difference rather than a blanket open door.
+
+**Why it happens.** `harvester/setup_normalization.sql:13` creates the view with a plain
+`CREATE OR REPLACE VIEW`. A plain view executes as its owner, so row-level security on the base
+table is not consulted for readers of the view. The Phase 1 audit already documents that the
+numbers themselves are unsafe — `price_usd_per_mt` is derived from hard-coded `rate_to_usd`
+constants with a literal `$150/MT` subtracted — so what is publicly enumerable is not merely
+unhelpful, it is third-party-scraped figures with fabricated unit conversions attached and no
+licence or attribution context in the payload.
+
+**Impact.** Anyone on the internet can dump the harvest, including rows scraped from ECX and NAEB
+pages whose terms of use were never reviewed here. For an incubator submission that is both a
+data-licensing exposure and a competitive leak, and it is live today, independent of the six
+unapplied migrations.
+
+**What is still not established.** The view's owner, `relkind` and `reloptions` — i.e. whether
+the fix is `alter view … set (security_invoker = true)` (which would then require base-table
+grants and policies to be reviewed, and could break the harvester's own readers) or a revocation
+of `select … to anon, authenticated`. Choosing between them needs the P7 output, not this probe.
+
+**I changed nothing.** No grant, policy, or view definition was altered; this finding is the
+measurement only. Remediation should be its own approved change with a read-only before/after
+check, because the same view is what the dashboard's price panels would read if it were ever
+wired up.
+
+**Verification**
+- Re-run the two `curl` commands above with `$ANON` in a shell variable (never in a file): the
+  gap between `0-0/122` and `*/0` is the finding.
+- `select relname, relkind, pg_get_userbyl(relowner), reloptions from pg_class where relname='unified_market_intel';`
+  and `select pg_get_viewdef('public.unified_market_intel'::regclass, true);` — paste both before
+  touching permissions.
+- After any fix, both `curl` commands must return `*/0` or `401`, and the harvester's own reads
+  must be re-checked from the service-role side.
+
 ## 5 Medium findings
+
+
 
 ### M-1 — Unvalidated AI output reaches the DOM and generated documents
 
@@ -555,7 +615,32 @@ I have made **no** changes. Proposed sequence, each step small and independently
 | Whether Supabase's own dashboard has API protection / auth rate limits enabled | Dashboard setting, not repo state. | Supabase → Authentication → (Rate limits / CAPTCHA) and API → settings; record what is on. |
 | Whether the harvester's last successful run actually wrote rows | The web app never reads the harvester's tables (`unified_market_intel` is not referenced by any `.from(` in `app/`, `components/`, `services/`) and this machine cannot reach the DB. | `select max(created_at), count(*) from <each harvester table>;` and `select * from unified_market_intel limit 5;` |
 
-None of the findings above depend on these unknowns for their *existence* — C-1, C-2, H-2, H-3, H-4 and L-1 are proven from source and live probes. C-3 and C-4 depend on them for their **final severity classification**, and I have marked that rather than assuming the worst or the best.
+None of the findings above depend on these unknowns for their *existence* — C-1, C-2, H-2, H-3,
+H-4 and L-1 are proven from source and live probes. C-3 and C-4 depend on them for their **final
+severity classification**, and I have marked that rather than assuming the worst or the best.
+
+### 9a. Amendment, later on 2026-10-27 — the network restriction lifted, so three rows above got answered
+
+The `*.supabase.co` DNS block recorded in the first row above **no longer holds on this machine**:
+the same hosts now resolve and answer (`curl` to `/rest/v1/` returns `401` without a key instead of
+exiting 6). Read-only requests were then made using only the anon key that the production browser
+bundle already ships. No write was attempted, no service-role key was used, and no secret value was
+printed, stored or committed. Three items in the table above change state:
+
+| Row above | Now measured | Consequence |
+|---|---|---|
+| "Whether the `datasets` bucket is public (C-3)" | `GET /storage/v1/object/public/datasets/__probe_nonexistent__.csv` → `400` with `{"error":"Bucket not found","code":"NoSuchBucket"}` | **Neither.** There is no `datasets` bucket in this project at all, so C-3 is not live today. `services/storage.ts:12` and `:23` would fail on upload regardless of any policy, which is a functional finding as well as a security one. The `getPublicUrl` intent remains wrong and must not be made to work by creating a public bucket — that is how C-3 becomes real. |
+| "Real `datasets`/`insights` columns and every active RLS policy (C-4)" | `GET /rest/v1/datasets?select=*&limit=1` and `/rest/v1/insights…` → `200` with `content-range: */0` | Both objects **exist** and are in the exposed schema, and RLS returns nothing to an anonymous caller. Still no column list and no policy text from here — that needs the SQL Editor — but "unverifiable" is now "exists, empty to anon". |
+| "Whether the harvester's last run actually wrote rows" | `GET /rest/v1/unified_market_intel?select=*&limit=1` → `206`, `content-range: 0-0/122` | The harvester **did** write rows — 122 of them — and they are readable anonymously. See H-6. `market_intelligence` itself returns `*/0` to the same key, so the view is the path. |
+
+Two items stay unverified, correctly: the live `/api/analyze` failure cause (Vercel function logs,
+which I cannot read) and Supabase dashboard-level rate limits/CAPTCHA. And the bucket probe is one
+request against one name — confirm in Storage → Policies before relying on it, because a project
+whose upload path is broken may simply have had the bucket deleted.
+
+**Nothing in this amendment changed a permission, a policy, a bucket setting or a row of data.** It
+is measurement, and it moves H-6 to the front of the remediation order because it is the only item
+in this review that is both live in production and fixable with one reviewed statement.
 
 ---
 
