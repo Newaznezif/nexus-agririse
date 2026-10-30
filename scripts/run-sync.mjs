@@ -64,12 +64,19 @@ console.log(`Sync ${report.ranAt ?? ''} → ${report.finishedAt ?? ''}  (run #${
 if (report.blocked) console.log(`BLOCKED: ${report.blocked}`);
 
 const tasksReport = report.tasks ?? [];
+// A task held back because its tables do not exist yet is a documented prerequisite, not a
+// run failure, so it is printed separately and does not affect the exit code.
+const deferred = report.deferred ?? [];
 if (tasksReport.length === 0) console.log('No task reported.');
 for (const task of tasksReport) {
   console.log(
     `  ${pad(task.task, 15)} ${pad(task.status, 16)} wrote ${pad(task.rowsWritten, 7)} rejected ${pad(task.rowsRejected, 6)} newest ${task.observedAt ?? '—'}` +
       (task.error ? `  ${task.error.code}: ${task.error.message}` : ''),
   );
+}
+
+for (const task of deferred) {
+  console.log(`  ${pad(task.task, 15)} not run — ${task.reason}`);
 }
 
 const failed = report.blocked || tasksReport.some((t) => t.status === 'failed');

@@ -14,7 +14,8 @@ from this machine (Supabase is not configured here, and `*.supabase.co` does not
 
 ## 1. What runs
 
-`lib/data/sync.ts` → `POST /api/data/sync`. Five tasks, in dependency order:
+`lib/data/sync.ts` → `POST /api/data/sync`. Five tasks run today, in dependency order, and a
+sixth is registered but held back:
 
 | Task | Publishers | Writes | Roughly |
 | --- | --- | --- | --- |
@@ -23,6 +24,29 @@ from this machine (Supabase is not configured here, and `*.supabase.co` does not
 | `climate` | Open-Meteo, NASA POWER | `data.daily_climate`, plus the owned columns of `public.environmental_data` | 12 places × (45 days history + 7 days forecast) × 2 publishers |
 | `exchange` | NBE, World Bank (unofficial ETB + annual indicators) | `data.exchange_rate_observations`, `data.economic_indicator_observations` | daily official + monthly unofficial + annual benchmarks, kept separate |
 | `satellite` | NASA GIBS | `data.satellite_layers`, `data.satellite_observations` | 8 sampled points per layer, latest composite |
+| `geo-vectors` | EthioAdmin, GRID3 and CDE ArcGIS services (counts only) | `data.geo_vector_layers` — **not yet, see below** | 12 registry rows, one cheap `returnCountOnly` per layer |
+
+### The gated task: `geo-vectors`
+
+Its table comes from `supabase/migrations/20261030000100_data_geospatial_reference.sql`, which is
+a proposal that has never been applied. So the task is in `GATED_SYNC_TASKS` rather than in the
+running list: before each run, `probeTable('geo_vector_layers')` asks PostgREST for it, and a
+`PGRST205` (relation not in the exposed schema) leaves the task out of the run entirely. The
+report says so in a `deferred` array — `{ task, reason }`, printed by `scripts/run-sync.mjs` as
+"not run — …" and stored in the run row's `detail` — and `GET /api/data/sync` lists the gated
+tasks with the table each one waits on.
+
+Two things this deliberately avoids. It does not record a skipped run as a success, and it does
+not fail the run either: the other five tasks genuinely succeeded, and a permanent `failed` flag
+would train the operator to ignore the schedule. A deferred task is neither, and the reason
+string is the database's own words rather than a guess. Applying the migration starts the task
+with no code change.
+
+What the task will write when it starts, and what it will not: the registry row per layer
+(publisher's live count, our verification count, `count_changed`, stated vintage, licence,
+tolerance, `needs_bbox`) and nothing else. `data.geo_vector_features` stays empty until the
+`f=geojson` response form is verified against all three services — see section 9 of
+`supabase/migrations/README.md`.
 
 The knobs that bound upstream load are constants at the top of `lib/data/sync.ts`
 (`PRICE_HISTORY_MONTHS`, `CLIMATE_DAYS_PER_RUN`, `CLIMATE_FORECAST_DAYS`, `CLIMATE_PLACES`,

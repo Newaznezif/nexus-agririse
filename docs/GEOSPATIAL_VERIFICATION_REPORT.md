@@ -12,6 +12,10 @@ every one used an anonymously reachable read.
 The verification question for each endpoint was: does a *data* operation return something whose
 content demonstrably relates to Ethiopia? "The homepage loads" was never accepted as an answer.
 
+**This is the discovery stage only.** What the shipped build actually does with these endpoints — the
+live per-layer reads, the normalised features, the browser evidence, and the places where the data is
+imperfect — is recorded in `GEOSPATIAL_BUILD_VERIFICATION.md` (Phase 6).
+
 ## 1. Ethio-NSDI — `ethionsdi.gov.et`
 
 | # | Request (abridged; full URLs in `urls.log`) | Response | Content check | Conclusion |

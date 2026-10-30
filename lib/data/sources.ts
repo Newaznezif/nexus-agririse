@@ -97,6 +97,39 @@ export const SOURCES = {
     cadence: 'irregular',
     requiresKey: false,
   },
+  ethioAdminBoundaries: {
+    id: 'ethio-admin-boundaries-arcgis',
+    name: 'Ethiopia AdminBoundaries (Ethiopia.GeoPortal on ArcGIS Online)',
+    category: 'geospatial',
+    homeUrl: 'https://www.arcgis.com/home/item.html?id=5fbc3698295e4a97a015219849ed35ad',
+    // Measured: the item record carries no licenseInfo, and the service’s own
+    // copyrightText names the Ethiopia Humanitarian Response portal. Attribution is
+    // therefore required while redistribution permission is not established — the
+    // difference is stated in the UI rather than assumed away.
+    license: 'No licence stated by the publisher; service attribution reads "ethiopia.humanitarianresponse.info". Redistribution is not established.',
+    cadence: 'irregular',
+    requiresKey: false,
+  },
+  grid3Ethiopia: {
+    id: 'grid3-ethiopia-arcgis',
+    name: 'GRID3 Ethiopia Social Distancing Layers v1.0 (WorldPop/GRID3)',
+    category: 'geospatial',
+    homeUrl: 'https://www.arcgis.com/home/item.html?id=672a9cbb360b4c809b684768ffb5645d',
+    license: 'CC BY 4.0, as stated in the publisher’s own item record ("These data may be redistributed following the terms of a Creative Commons Attribution 4.0 International (CC BY 4.0) license")',
+    cadence: 'irregular',
+    requiresKey: false,
+  },
+  cdeEthiopia: {
+    id: 'cde-ethiopia-hydrology-arcgis',
+    name: 'CDE (University of Bern) Ethiopia hydrology map services',
+    category: 'geospatial',
+    homeUrl: 'https://gis.cde.unibe.ch/gis/rest/services/',
+    // Measured: copyrightText is empty on all four services and no licence page is
+    // served with them, so the only defensible claim is the publisher’s identity.
+    license: 'Licence not stated by the server; shown for reading with attribution to the Centre for Development and Environment (CDE), University of Bern. Redistribution is not established.',
+    cadence: 'irregular',
+    requiresKey: false,
+  },
 } satisfies Record<string, SourceDescriptor>;
 
 /** How long a value may be shown as current before the UI must call it stale. */
