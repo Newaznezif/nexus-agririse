@@ -307,6 +307,13 @@ note  1500 units read: UNIT_AREA 0.010–18.776 km² (median 0.042),
   **Deliberately not fixed in this commit:** `lib/data/openMeteo.ts` is not geospatial work, and this
   push is scoped to geospatial files. It is recorded as §14 item 5 and left for approval instead of
   being folded in silently.
+  **No longer attributable to this workstation.** After the push, the same request was sent to the live
+  deployment (§15): `https://nexus-agririse.vercel.app/api/data/weather?lat=9&lon=38&mode=history&start=2026-01-01&end=2026-01-31`
+  answered **502 `network`, "Could not reach the upstream host"** at 18:16:58Z, while
+  `?mode=forecast` on the same host answered 200 seconds earlier. Vercel's network path is not this
+  machine's resolver, so the "blocked on this dev machine" reading is now closed: every reader of the
+  deployed app gets the failure. The same probe also shows a smaller inaccuracy — the failure's own
+  provenance labels its source "Open-Meteo Forecast API" even on the archive path.
 - **CDE is slow, and the extent filter is what keeps it usable.** Through the app route, CDE reads measured
   1.0–7.4 s (`cde-watershed&detail=overview` across the country took 7.4 s; `cde-basin&detail=detailed`
   5.2 s). The count query the connector actually sends — envelope geometry, `returnCountOnly=true` — came
@@ -539,11 +546,11 @@ of an assertion, because a publisher re-counting its layer is not a broken contr
 
 ## 13. What this does **not** claim
 
-1. **Not the deployed environment.** Everything above ran on this workstation — first against `next dev`,
+1. **Not the deployed environment.** Everything in §1–§12 ran on this workstation — first against `next dev`,
    then against the `npm run build` output served by `next start` (§10, §12). That proves the production
    *bundle* behaves correctly here; it does not prove the Vercel deployment, its environment variables, its
-   cold starts, or its network path to the publishers. Those are checked separately after the push, against
-   the deployed URL, and are recorded there rather than assumed from this section.
+   cold starts, or its network path to the publishers. What was measured after the push is recorded in §15,
+   including the part that could not be measured from here and why.
 2. **No database state.** No migration applied, no row written, no grant or RLS policy touched.
 3. **No persistence proof for imagery tiles.** Tile reads go browser→NASA directly; the server only
    supplies the template and the scene date.
@@ -562,8 +569,10 @@ of an assertion, because a publisher re-counting its layer is not a broken contr
 
 ## 14. Next prerequisites before this can be called done
 
-1. Production build + deployment, then re-run `node scripts/check-data-routes.mjs --base <production URL>`
-   against the deployed routes.
+1. ~~Production build + deployment~~ — done, and the build passed; then re-run
+   `node scripts/check-data-routes.mjs --base <production URL>` against the deployed routes. **This last
+   step is still open**: the preview deployment that carries this commit is behind Vercel Deployment
+   Protection, so an anonymous harness run cannot reach it. See §15 for the two ways to close it.
 2. Verify `f=geojson` per service (ring grouping, CRS, and whether `exceededTransferLimit` still applies)
    before enabling the feature-archive half of the migration.
 3. Apply the registry half of the migration **only with approval and a live preflight**, then confirm the
@@ -576,4 +585,83 @@ of an assertion, because a publisher re-counting its layer is not a broken contr
    machine" comment with the truth, and add a `mode=history` success case to
    `scripts/check-data-routes.mjs` so the assertion gap cannot hide it again. `lib/data/openMeteo.ts` is
    not geospatial work, so it is not part of the geospatial commit described in §12; it needs its own
-   approval and its own commit.
+   approval and its own commit. The host is now known to fail in the deployed environment too (§15), so
+   this is a live user-facing defect, not a local annoyance.
+
+## 15. After the push — what the deployment let me verify, and what it did not
+
+Everything in this section was measured after the commit left this workstation, against GitHub's
+unauthenticated REST endpoints and the live Vercel hosts. `gh` is not logged in on this machine, so the
+statuses and deployments APIs were used directly; no Vercel token was read, sent, or needed.
+
+**What was pushed.** `d458a15fa63ed7d0968de922412288f812348166` — *feat(geospatial): read Ethiopia's
+reference layers from the live publishers*, 15 files, +4,031/−271, authored
+`Newaz Nezif <newaznezif@gmail.com>`, fast-forward on `fix/supabase-migration-safety`
+(`44d3337..d458a15`, no force). The five pending security-related files were left unstaged and untouched;
+`git status` after staging showed exactly fifteen paths in the index and those five still modified only in
+the working tree. A final scan of the staged diff for credential material before committing found only
+prose about tokens in error messages, no secret values.
+
+**The deployment built.** Vercel reported on the pushed SHA:
+
+```
+2026-10-30T18:07:27Z  pending  Vercel is deploying your app
+2026-10-30T18:08:04Z  success  Deployment has completed
+target https://vercel.com/newaznezifs-projects/nexus-agririse/D6iYGQSyeog9wMbxUQcQxdjqFdSu
+```
+
+GitHub's deployments API gives the same record: deployment id `7445424254`, environment `Preview`, ref
+`d458a15…`, created `18:08:04Z`, creator `vercel[bot]`, environment URL
+`https://nexus-agririse-e9c2ydfzo-newaznezifs-projects.vercel.app`. `check-suites` for the SHA is empty —
+this integration reports through commit statuses only, which is why the statuses API is the authority here.
+
+That build passing is worth stating precisely, because it is weaker than it sounds and stronger than
+nothing: Vercel installed and compiled *the tree that is now on the branch*, so the artifact behind that
+URL contains this commit, and nothing about the push was rejected by their pipeline. It does not say the
+routes answer correctly there.
+
+**The routes on that URL could not be probed.** Deployment Protection is on for previews:
+
+```
+GET https://nexus-agririse-e9c2ydfzo-newaznezifs-projects.vercel.app/api/data/geospatial?view=vectors
+→ 302, body "Protected by Vercel Authentication"
+```
+
+and navigating there lands on `vercel.com/login?next=…`. So the 1,516-assertion harness has **not** been
+run against the deployed geospatial bundle, and this document does not claim it has. Two ways to close
+that gap, both of which belong to the owner of the project rather than to me: land the commit on `main`
+so the unprotected production host carries it, then run
+`node scripts/check-data-routes.mjs --base https://nexus-agririse.vercel.app`; or make one preview
+reachable (their own logged-in browser, or a deployment-protection bypass). A bypass code is a secret,
+so it should not be pasted into this conversation.
+
+**What production actually serves today.** An earlier note in this project's history said production was
+still on June's `main`; that is no longer true and the deployments API shows why. `origin/main` is
+`676331c` — *Merge pull request #2 from Newaznezif/fix/supabase-migration-safety*, 2026-10-30 12:02:32
++03:00 — with a Production deployment at `09:03:18Z`. So `32097dc` (the H-6 lockdown migration file) and
+`44d3337` (the Phase 1 documents) are on `main`; `d458a15` is **not**, which is exactly what the live host
+shows:
+
+| request (all read-only `GET`) | production answer |
+| --- | --- |
+| `geospatial?view=layers` | 200, `NASA GIBS`, retrieved `18:14:29Z` |
+| `geospatial?view=boundaries&level=1` | 200, 11 regions, `geoBoundaries`, `18:16:54Z` |
+| `geospatial?view=sample&…&date=2026-10-20` | 200, `18:16:56Z` |
+| `geospatial?view=vectors` | **400 `bad_input` "Unknown view"** — the code is not deployed |
+| `geospatial?view=vector&layer=grid3-urban-point` | **400 `bad_input` "Unknown view"** — same |
+| `weather?mode=forecast` | 200, `Open-Meteo Forecast API`, `18:16:57Z` |
+| `weather?mode=history&start=…&end=…` | **502 `network` "Could not reach the upstream host"**, `18:16:58Z` |
+| `markets?mode=overview` | 200, 1,812 B, `WFP Ethiopia Food Prices (rEMS)` |
+| `markets?mode=snapshot` | 200, 303,310 B |
+| `markets?mode=history&commodity=Teff` | 200, 431,926 B |
+| `exchange`, `status`, `locations`, `agroclimate`, `sync` (GET) | 200 / 200 / 200 / 200 / 200 |
+
+Two honest notes on that table. The first attempt at the markets row asked for `/api/data/market?commodity=teff`
+and got a 404 HTML page: that was my wrong path, not a production defect — the route is
+`/api/data/markets`, and the corrected request is in the table. And `POST /api/data/sync` was
+**deliberately not sent** to production: it is the write-capable route, and provable-but-unneeded
+requests that could reach a database are not fired at a shared environment to demonstrate a refusal the
+local harness already asserts.
+
+The `mode=history` row is the one that changes a §9 conclusion rather than confirming it: the dead archive
+host fails on Vercel's network too, so it is not a property of this workstation's resolver.
