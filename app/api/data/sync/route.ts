@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { errorResponse } from '@/lib/data/api';
-import { runSync, SYNC_TASK_KEYS, type SyncTaskKey } from '@/lib/data/sync';
+import { runSync, GATED_SYNC_TASKS, SYNC_TASK_KEYS, type SyncTaskKey } from '@/lib/data/sync';
 
 /**
  * POST /api/data/sync
@@ -91,6 +91,10 @@ export async function GET(): Promise<NextResponse> {
       data: {
         method: 'POST',
         tasks: [...SYNC_TASK_KEYS],
+        // Tasks that exist in code but are held back until a proposed migration is applied.
+        // Naming them here means an operator can tell "not scheduled" apart from "waiting on
+        // a table", without running a write to find out.
+        gated: GATED_SYNC_TASKS.map((t) => ({ task: t.key, requiresTable: `data.${t.table}` })),
         lease_key: 'nexus-data-sync',
         configured: Boolean(process.env.SYNC_SECRET) && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
       },

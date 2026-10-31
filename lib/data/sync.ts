@@ -4,6 +4,7 @@ import { DEFAULT_ETHIOPIAN_LOCATION, ETHIOPIAN_MARKET_LOCATIONS } from './ethiop
 import { findLatestLayerDate, GIBS_LAYERS, sampleLayerAtCoordinate } from './gibs';
 import { getAgroclimateDaily } from './nasaPower';
 import { getExchangeRates, getUsdRateSeries } from './nbeExchange';
+import { readVectorLayerIndex, VECTOR_LAYER_BY_ID } from './geoVector';
 import { getWeatherForecast } from './openMeteo';
 import { SOURCES } from './sources';
 import { getObservationWindow } from './wfpMarketPrices';
@@ -76,6 +77,12 @@ export interface SyncReport {
   /** Set when the run could not start at all (no credentials, schema not exposed, …). */
   blocked: string | null;
   tasks: TaskReport[];
+  /**
+   * Tasks that exist in code but were left out of this run because their tables are not
+   * there yet, each with the PostgREST answer that said so. An empty list means every
+   * registered task ran, which is a different claim from "nothing was skipped".
+   */
+  deferred: { task: string; reason: string }[];
 }
 
 export interface SyncFreshness {
@@ -704,7 +711,140 @@ async function syncSatellite(): Promise<TaskReport> {
  * Orchestration: lease, run, bookkeep
  * ------------------------------------------------------------------ */
 
-export const SYNC_TASK_KEYS = ['locations', 'market-prices', 'climate', 'exchange', 'satellite'] as const;
+/* ------------------------------------------------------------------ *
+ * Task 5 — geospatial reference layers, gated on an unapplied migration
+ * ------------------------------------------------------------------ */
+
+/** Which publisher a registered layer belongs to, so a run can be tied to who was contacted. */
+const GEO_SOURCE_BY_PROVIDER: Record<string, string> = {
+  ethioAdmin: SOURCES.ethioAdminBoundaries.id,
+  grid3Eth: SOURCES.grid3Ethiopia.id,
+  cdeWater: SOURCES.cdeEthiopia.id,
+};
+
+/**
+ * The registry half of geospatial persistence: one row per published layer, carrying the
+ * publisher's own live count beside the count measured when the layer was verified, plus its
+ * stated vintage, licence and generalisation tolerance.
+ *
+ * It writes the registry and the staleness clock, and nothing else. The geometry rows in
+ * `data.geo_vector_features` are deliberately not written here: the archive needs the
+ * publisher's own GeoJSON ring grouping (`f=geojson`), which has not been verified against
+ * these three services — the live route asks `f=json` and re-groups rings in the connector,
+ * which is adequate for drawing and not something to bake into an archive untested. That
+ * prerequisite is stated in the migration header and in docs/DATA_SYNC.md rather than worked
+ * around with a silent approximation.
+ */
+async function syncGeoVectorRegistry(): Promise<TaskReport> {
+  const index = await readVectorLayerIndex();
+  if (!index.ok) return failedTask('geo-vectors', [], index.error);
+
+  const client = getSyncClient();
+  const previous = await client.schema('data').from('geo_vector_layers').select('layer_id, source_count').limit(50);
+  if (previous.error) {
+    return failedTask('geo-vectors', [], { code: 'read_failed', message: truncate(previous.error.message) });
+  }
+
+  const seen = new Map<string, number | null>();
+  for (const row of previous.data ?? []) {
+    seen.set(String(row.layer_id), row.source_count === null ? null : Number(row.source_count));
+  }
+
+  const checkedAt = new Date().toISOString();
+  const rows: Record<string, unknown>[] = [];
+
+  for (const entry of index.data) {
+    const definition = VECTOR_LAYER_BY_ID.get(entry.id);
+    if (!definition) continue;
+
+    const prior = seen.get(entry.id);
+    // The staleness signal a reference dataset can actually give: its publisher's own count
+    // moved since the last time anyone asked. Null on a layer this run saw for the first time,
+    // because there is nothing for it to have changed against. Age is not stored here —
+    // `count_checked_at` is, and how long a copy may sit before it is re-read is the geometry
+    // step's decision, which does not exist yet.
+    const countChanged = prior === undefined ? null : prior !== entry.liveCount;
+
+    rows.push({
+      layer_id: entry.id,
+      title: entry.title,
+      meaning: entry.meaning,
+      caveat: entry.caveat,
+      layer_group: entry.group,
+      source_id: GEO_SOURCE_BY_PROVIDER[definition.provider] ?? SOURCES.ethioAdminBoundaries.id,
+      provider: definition.provider,
+      service_path: definition.path,
+      publisher_layer: entry.layerLabel,
+      geometry_kind: entry.geometryKind,
+      name_fields: definition.nameFields,
+      keep_fields: definition.keepFields,
+      // Both counts or neither: a live count without the verification baseline next to it is
+      // how a partial copy starts to look like a complete one.
+      source_count: entry.liveCount,
+      measured_count: entry.liveCount === null ? null : definition.measuredCount,
+      count_checked_at: checkedAt,
+      count_changed: countChanged,
+      features_stored: 0,
+      feature_limit: definition.featureLimit,
+      tolerance_degrees: definition.toleranceDegrees,
+      vertices_stored: null,
+      needs_bbox: definition.needsBbox,
+      extent_filtered: null,
+      color: entry.color,
+      value_kind: definition.valueKind,
+      units: 'degrees (WGS84)',
+      attribute_notes: entry.attributeNotes,
+      vintage_note: entry.vintageNote,
+      publisher_vintage: entry.vintage,
+      license: entry.license,
+      source_url: entry.sourceUrl,
+      storage_srid: null,
+      storage_crs_text: null,
+      last_full_sync_at: null,
+      last_error: entry.status === 'available' ? null : truncate(`${entry.status}: ${entry.statusDetail ?? 'the publisher did not answer the count query'}`),
+      methodology: index.provenance.methodology,
+      coverage: 'Ethiopia',
+      quality: index.provenance.quality,
+    });
+  }
+
+  const outcome = await upsertBatch(rows, 'geo_vector_layers', 'layer_id');
+  const errors = outcome.error ? [outcome.error] : [];
+  const newestVintage = index.data.map((e) => e.vintage).filter((v): v is string => typeof v === 'string').sort().at(-1) ?? null;
+
+  return {
+    task: 'geo-vectors',
+    sourceIds: [...new Set(index.data.map((e) => GEO_SOURCE_BY_PROVIDER[VECTOR_LAYER_BY_ID.get(e.id)?.provider ?? ''] ?? '').filter(Boolean))],
+    status: outcome.written === 0 ? 'failed' : outcome.rejected > 0 ? 'partial' : 'succeeded',
+    rowsWritten: outcome.written,
+    rowsRejected: outcome.rejected,
+    observedAt: newestVintage ? `${newestVintage}T00:00:00Z` : null,
+    error: errors[0] ?? null,
+  };
+}
+
+/**
+ * Does the table this task writes to exist? PostgREST answers `PGRST205` for a relation that
+ * is not in the exposed schema, which is what "the migration has not been applied" looks like
+ * from here. The reason is kept, not swallowed: absence and denial need different fixes.
+ */
+async function probeTable(table: string): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const client = getSyncClient();
+  const probe = await client.schema('data').from(table).select('*', { count: 'exact', head: true });
+  if (probe.error) return { ok: false, reason: truncate(`${probe.error.code ?? 'error'}: ${probe.error.message}`) };
+  return { ok: true };
+}
+
+/**
+ * Tasks whose tables come from a migration that is proposed but not applied. They are absent
+ * from the run until their preflight passes, so the scheduled sync keeps reporting the work
+ * it genuinely did; applying the file starts them with no further code change.
+ */
+export const GATED_SYNC_TASKS: { key: SyncTaskKey; run: () => Promise<TaskReport>; table: string }[] = [
+  { key: 'geo-vectors', run: syncGeoVectorRegistry, table: 'geo_vector_layers' },
+];
+
+export const SYNC_TASK_KEYS = ['locations', 'market-prices', 'climate', 'exchange', 'satellite', 'geo-vectors'] as const;
 export type SyncTaskKey = (typeof SYNC_TASK_KEYS)[number];
 
 const TASKS: { key: SyncTaskKey; run: () => Promise<TaskReport> }[] = [
@@ -758,17 +898,28 @@ export async function runSync(selected?: SyncTaskKey[]): Promise<SyncReport> {
     ]);
   }
 
+  // ---- gated tasks: a task whose tables come from an unapplied migration stays out of the
+  // run, so the report describes the work that was actually done. The probe is one head
+  // request per gated task, and it runs under the lease. ----
+  const deferred: SyncReport['deferred'] = [];
+  for (const gated of GATED_SYNC_TASKS) {
+    if (selected && selected.length > 0 && !selected.includes(gated.key)) continue;
+    const ready = await probeTable(gated.table);
+    if (ready.ok) tasks.push(gated);
+    else deferred.push({ task: gated.key, reason: ready.reason });
+  }
+
   // ---- open the run row ----
   const opened = await client
     .schema('data')
     .from('sync_runs')
-    .insert({ source_key: SYNC_LEASE_KEY, status: 'running', started_at: startedAt.toISOString(), detail: { holder, tasks: tasks.map((t) => t.key) } })
+    .insert({ source_key: SYNC_LEASE_KEY, status: 'running', started_at: startedAt.toISOString(), detail: { holder, tasks: tasks.map((t) => t.key), deferred } })
     .select('run_id')
     .single();
 
   if (opened.error) {
     await client.schema('data').rpc('release_sync_lease', { p_source_key: SYNC_LEASE_KEY, p_holder: holder });
-    return report(holder, startedAt, null, `sync_runs is not writable: ${truncate(opened.error.message)}`, []);
+    return report(holder, startedAt, null, `sync_runs is not writable: ${truncate(opened.error.message)}`, [], null, deferred);
   }
 
   const runId = opened.data.run_id as number;
@@ -812,13 +963,13 @@ export async function runSync(selected?: SyncTaskKey[]): Promise<SyncReport> {
         source_url: SOURCES.wfpPrices.homeUrl,
         error_code: firstErrorCode(results),
         error_message: firstErrorMessage(results),
-        detail: { tasks: results.map((r) => ({ task: r.task, status: r.status, written: r.rowsWritten, rejected: r.rowsRejected, error: r.error?.code ?? null })) },
+        detail: { tasks: results.map((r) => ({ task: r.task, status: r.status, written: r.rowsWritten, rejected: r.rowsRejected, error: r.error?.code ?? null })), deferred },
         record_replaced_at: finishedAt.toISOString(),
       })
       .eq('run_id', runId);
 
     await client.schema('data').rpc('release_sync_lease', { p_source_key: SYNC_LEASE_KEY, p_holder: holder });
-    return report(holder, startedAt, finishedAt, null, results, runId);
+    return report(holder, startedAt, finishedAt, null, results, runId, deferred);
   }
 }
 
@@ -829,6 +980,7 @@ function report(
   blocked: string | null,
   tasks: TaskReport[],
   runId: number | null = null,
+  deferred: SyncReport['deferred'] = [],
 ): SyncReport {
   return {
     ranAt: startedAt.toISOString(),
@@ -837,6 +989,7 @@ function report(
     runId,
     blocked,
     tasks,
+    deferred,
   };
 }
 

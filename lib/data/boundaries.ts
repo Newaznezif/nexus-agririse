@@ -195,7 +195,7 @@ export async function getAdminBoundaries(level: 0 | 1): Promise<ConnectorResult<
       valueKind: 'estimated',
       units: 'degrees (WGS84, longitude then latitude)',
       methodology:
-        `geoBoundaries gbOpen ADM${level} simplified geometry; exterior rings only (internal enclaves dropped), decimated to at most ${MAX_POINTS_PER_RING} points per ring and rounded to 0.001°. Outlines are approximate and do not settle legal boundaries.`,
+        `geoBoundaries gbOpen ADM${level} simplified geometry; exterior rings only (internal enclaves dropped), decimated to at most ${MAX_POINTS_PER_RING} distinct points per ring plus the closing vertex repeated at the end, and rounded to 0.001°. Outlines are approximate and do not settle legal boundaries.`,
       coverage: `Ethiopia, ${built.value.length} ADM${level} areas`,
       quality: 'medium',
       retrievedAt: new Date(outcome.storedAt).toISOString(),
