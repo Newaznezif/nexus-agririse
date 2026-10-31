@@ -264,6 +264,23 @@ async function main() {
   });
   await errCase('weather bad lat', '/api/data/weather?lat=abc&lon=38', 400, 'bad_input');
   await errCase('weather history missing dates', '/api/data/weather?mode=history', 400, 'bad_input');
+  // The success case below is the point of this block. `mode=history` used to have only the 400
+  // above, so every green run — fourteen of them — said nothing about whether the archive ever
+  // answered, which is exactly how an unresolvable hostname in the source shipped. The window is
+  // fixed and in the past, so the row count and the dates stay checkable as time passes.
+  await okCase('weather history', '/api/data/weather?mode=history&lat=9.02&lon=38.75&start=2026-01-01&end=2026-01-31', (d, body) => {
+    assert('weather history: one row per day in the stated window', Array.isArray(d.daily) && d.daily.length === 31, d.daily?.length);
+    assert('weather history: the window is the one asked for, in order', d.daily[0]?.date === '2026-01-01' && d.daily.at(-1)?.date === '2026-01-31', [d.daily[0]?.date, d.daily.at(-1)?.date]);
+    assert('weather history: a past window contains no forecast rows', d.daily.every((r) => r.isForecast === false), d.daily.find((r) => r.isForecast));
+    assert('weather history: temperatures are numbers, max above min', d.daily.every((r) => isNum(r.temperatureMaxC) && isNum(r.temperatureMinC) && r.temperatureMaxC > 5 && r.temperatureMaxC < 40 && r.temperatureMinC < r.temperatureMaxC), d.daily[0]);
+    assert('weather history: precipitation and ET0 are non-negative mm or null', d.daily.every((r) => (r.precipitationSumMm === null || (isNum(r.precipitationSumMm) && r.precipitationSumMm >= 0)) && (r.et0Mm === null || (isNum(r.et0Mm) && r.et0Mm >= 0))), d.daily[0]);
+    assert('weather history: variables the archive was not asked for arrive as null, not as zeros', d.daily.every((r) => r.relativeHumidityMeanPct === null && r.windSpeedMaxKmh === null && r.precipitationProbabilityMaxPct === null), d.daily[0]);
+    assert('weather history: labelled reanalysis, not a station observation', /ERA5|reanalysis/i.test(body.provenance.methodology) && body.provenance.valueKind === 'modeled', body.provenance);
+    assert('weather history: credited to the historical API, not the forecast one', /Historical/i.test(body.provenance.source), body.provenance.source);
+    assert('weather history: units are the publisher’s own', /°C/.test(body.provenance.units) && /mm/.test(body.provenance.units), body.provenance.units);
+    assert('weather history: elevation came from the grid cell', isNum(d.elevationM) && d.elevationM > 0, d.elevationM);
+    console.log(`  note  weather history: ${d.daily.length} ERA5 days, first row ${JSON.stringify([d.daily[0].precipitationSumMm, d.daily[0].temperatureMaxC, d.daily[0].temperatureMinC, d.daily[0].et0Mm])}, units ${body.provenance.units}`);
+  });
   await errCase('weather unknown place', '/api/data/weather?place=Nowhereville', 400, 'bad_input');
 
   section('agroclimatology (NASA POWER)');

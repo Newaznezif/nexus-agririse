@@ -11,9 +11,11 @@ import type {
 } from './types';
 
 const FORECAST_HOST = 'https://api.open-meteo.com/v1/forecast';
-/** Reachable from the app's own network; blocked by DNS on this dev machine, which is
- *  why its tests run on a recorded fixture and the status view reports the truth. */
-const ARCHIVE_HOST = 'https://historical-api.open-meteo.com/v1/archive';
+/** The archive is served from `archive-api`. `historical-api.open-meteo.com` — which this constant
+ *  used until 2026-10-30 — has never resolved (`nslookup … 8.8.8.8`: *Non-existent domain*), so
+ *  `mode=history` could only ever return a network 502, on this machine and on the deployed app.
+ *  Measured against this connector's exact query: 200, 31 daily rows for 2026-01-01 → 2026-01-31. */
+const ARCHIVE_HOST = 'https://archive-api.open-meteo.com/v1/archive';
 
 const TIMEZONE = 'Africa/Addis_Ababa';
 
