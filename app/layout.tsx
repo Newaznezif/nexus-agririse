@@ -1,21 +1,11 @@
 import type { Metadata } from "next";
-import { Inter, Noto_Sans_Ethiopic } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { AuthProvider } from "@/hooks/useAuth";
 import { DemoModeProvider } from "@/context/DemoModeContext";
 import { Toaster } from "react-hot-toast";
 import { ChatAssistant } from "@/components/ChatAssistant";
-
-const inter = Inter({
-  subsets: ["latin"],
-});
-
-const notoEthiopic = Noto_Sans_Ethiopic({
-  subsets: ["ethiopic"],
-  weight: ["400", "700"],
-  variable: "--font-noto-ethiopic",
-});
+import { FontPreload } from "@/components/FontPreload";
 
 export const metadata: Metadata = {
   title: "Nexus AgriRise Africa",
@@ -29,7 +19,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} ${notoEthiopic.variable} min-h-screen flex flex-col antialiased`} suppressHydrationWarning>
+      <body className="app-font min-h-screen flex flex-col antialiased" suppressHydrationWarning>
+        <FontPreload />
         <DemoModeProvider>
           <Toaster position="top-right" />
           <AuthProvider>
