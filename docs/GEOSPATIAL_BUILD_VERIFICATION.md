@@ -90,6 +90,10 @@ ADM0/ADM1 boundary section, 907 in the vector sections (919 `ok` lines minus the
 table lines, which print but do not assert). Those proportions still hold at 1516 — every assertion added
 since is geospatial.
 
+These are the numbers for the geospatial commit alone. The weather-host fix commit grew the harness to
+1,521 assertions and its re-run is recorded in §15, including the single assertion that failed there and
+why the count moved by less than the new cases add.
+
 The run history is worth stating, because the first failures were **harness bugs, not product bugs**:
 
 | Run | Result | What changed |
@@ -324,6 +328,13 @@ note  1500 units read: UNIT_AREA 0.010–18.776 km² (median 0.042),
 - The CDE services publish **no date and no licence**, so `observedAt` is `null`, a `vintageNote` says no
   date is published, and the licence text says "shown for reading with attribution … redistribution is
   not established" instead of implying permission that was never granted.
+- **`view=sample` on the newest GIBS composite is intermittently a 502, and the cause is ours.** The
+  date-certifying probe requests a tile at the layer's `minZoom` while the value read requests a finer
+  zoom, and NASA publishes an 8-day composite progressively, so the two can disagree for the scene at the
+  edge of the record. Measured on 2026-10-31: the identical sample request failed once and returned
+  NDVI 0.2876 twice, and for 2026-10-30 `z0` answered 404 while `z1` and `z9` answered 200. Full
+  measurement and the reproduction are in §15; `lib/data/gibs.ts` was not touched, because certifying a
+  date at the zoom the read will use is a behaviour change that needs its own approval, not a drive-by.
 
 ## 10. Frontend verification with real responses
 
@@ -569,10 +580,13 @@ of an assertion, because a publisher re-counting its layer is not a broken contr
 
 ## 14. Next prerequisites before this can be called done
 
-1. ~~Production build + deployment~~ — done, and the build passed; then re-run
-   `node scripts/check-data-routes.mjs --base <production URL>` against the deployed routes. **This last
-   step is still open**: the preview deployment that carries this commit is behind Vercel Deployment
-   Protection, so an anonymous harness run cannot reach it. See §15 for the two ways to close it.
+1. ~~Production build + deployment~~ — attempted twice, and **still open for two different reasons**
+   (§15). The branch's Preview builds pass, but preview URLs sit behind Vercel Deployment Protection, so
+   an anonymous `node scripts/check-data-routes.mjs --base <url>` cannot reach them; and the Production
+   build of the identical tree failed in 31 seconds, while production kept serving the previous
+   deployment. Closing this needs their Vercel logs for deployment
+   `dpl_Eyxdf6NRhXUhLzLMsby9PszaXjPR`, then a successful production build, then the harness against
+   `https://nexus-agririse.vercel.app`.
 2. Verify `f=geojson` per service (ring grouping, CRS, and whether `exceededTransferLimit` still applies)
    before enabling the feature-archive half of the migration.
 3. Apply the registry half of the migration **only with approval and a live preflight**, then confirm the
@@ -580,13 +594,16 @@ of an assertion, because a publisher re-counting its layer is not a broken contr
 4. Decide caching posture for serverless: the process cache dies with the container, which is why every
    payload carries its own `retrievedAt`; if a cold start per request becomes observable in production,
    that is a design change, not a tuning knob.
-5. **Fix the dead Open-Meteo archive host (§9)** — change `ARCHIVE_HOST` at `lib/data/openMeteo.ts:16` to
-   `https://archive-api.open-meteo.com/v1/archive`, replace the false "blocked by DNS on this dev
-   machine" comment with the truth, and add a `mode=history` success case to
-   `scripts/check-data-routes.mjs` so the assertion gap cannot hide it again. `lib/data/openMeteo.ts` is
-   not geospatial work, so it is not part of the geospatial commit described in §12; it needs its own
-   approval and its own commit. The host is now known to fail in the deployed environment too (§15), so
-   this is a live user-facing defect, not a local annoyance.
+5. ~~**Fix the dead Open-Meteo archive host (§9)**~~ — **done on the branch** in `6e8b9b5`: `ARCHIVE_HOST`
+   is now `https://archive-api.open-meteo.com/v1/archive`, the false "blocked by DNS on this dev
+   machine" comment is replaced with the measurement, and a 24-assertion `mode=history` success case is in
+   `scripts/check-data-routes.mjs` so the gap cannot hide it again. Production does not serve it yet
+   (item 1).
+6. **Certify a GIBS date at the zoom the read uses (§9, §15).** `findLatestLayerDate` proves a scene
+   exists by fetching `minZoom`, then `view=sample` fetches a finer tile, so the newest composite can pass
+   the first and fail the second. The small honest fix is to probe at the zoom actually read, or to step
+   one date back on a 404 instead of returning a 502 — either way it changes what users see on the map's
+   NDVI read-out, so it needs approval rather than being folded into a verification commit.
 
 ## 15. After the push — what the deployment let me verify, and what it did not
 
@@ -665,3 +682,82 @@ local harness already asserts.
 
 The `mode=history` row is the one that changes a §9 conclusion rather than confirming it: the dead archive
 host fails on Vercel's network too, so it is not a property of this workstation's resolver.
+
+### The host fix, and what the harness counted afterwards
+
+`lib/data/openMeteo.ts:16` was changed to `https://archive-api.open-meteo.com/v1/archive` in its own
+commit (`6e8b9b5`), with the false "blocked by DNS on this dev machine" comment replaced by the
+measurement. Proved against the connector's exact query — the same four daily variables, the same
+timezone, the same `URLSearchParams` comma encoding:
+
+```
+historical-api.open-meteo.com → fetch failed (no such host)
+archive-api.open-meteo.com    → 200, 31 daily rows for 2026-01-01 → 2026-01-31,
+                                 first row 0.0 mm / 22 °C / 8.9 °C / ET0 3.66 mm,
+                                 units mm · °C · °C · mm, elevation 2379 m
+```
+
+Through the built app: `view=weather mode=history` answers 200 with 31 rows labelled `modeled` and
+credited to the historical API; `/api/data/status` flipped `open-meteo-historical` from `unavailable`
+to `connected — Returning data observed 2026-10-29`. The `mode=history` success case (§9's named
+assertion gap) is now in the harness: 24 assertions over a fixed, already-published window, so it stays
+checkable as the date moves.
+
+The re-run came out **1520/1521, exit 1** — not green, and the arithmetic is worth stating rather than
+re-running until something passes. Yesterday's total was 1516; the 24 new weather-history assertions made
+1540 expected, and 19 assertions that ran yesterday did not run today: 18 because the `sample:MODIS_Terra_NDVI_8Day`
+case short-circuited on the failure below (its `okCase` stops at the first non-200), and 1 because
+`status[nbe-indicative-rates]: observation date shown` no longer applies now that NBE reports
+`unavailable — published no rates for 2026-10-31`, which is a publisher-date fact, not a code fact.
+
+**The one failure is in the GIBS read, and it is intermittent.** `view=sample&layer=MODIS_Terra_NDVI_8Day`
+returned 502 `http_status`/upstream 404 once, then 200 with a real value twice more on the identical URL:
+
+```
+try 1 → ok=false  http_status "Upstream responded 404"
+try 2 → ok=true   tileDate=2026-10-30 value=0.2876
+try 3 → ok=true   tileDate=2026-10-30 value=0.2876
+```
+
+Probing NASA directly for the newest composite shows why: for 2026-10-30, `z0` answered **404** while
+`z1` and `z9` answered **200**, and every earlier date in the sweep answered 200 at all three zooms.
+`findLatestLayerDate` (`lib/data/gibs.ts:217`) certifies a date by requesting a tile at the layer's
+`minZoom`, while the value read requests a finer one — so for the scene still being ingested the two
+disagree, in either direction, minute to minute. The same reasoning that closed §9's assertion gap
+applies here: a date-certification probe should ask at the zoom the read will use, or retry one date
+back. **Not changed:** `lib/data/gibs.ts` is outside both approved commits, so this is recorded as a
+known defect with a name and a reproduction rather than fixed silently.
+
+### The merge to main, and the production build that failed
+
+The branch was merged into `main` on 2026-10-31 (`4fea791`, no-ff, parents `676331c` and `6e8b9b5`,
+pushed `676331c..4fea791`). The five pending security files were byte-identical between `main` and the
+branch tip — checked before the merge, so the checkout could not disturb them — and they are still
+uncommitted and unmodified. The working tree came back to `fix/supabase-migration-safety`.
+
+**The production deployment failed 31 seconds after it started, and the code is not the reason.**
+
+```
+04:13:34Z pending   Preview    6e8b9b5 → 04:14:19Z success  (deployment BP2kdZ4YagNp5YaniqCATNkvQvdx)
+04:18:22Z pending   Production 4fea791 → 04:18:53Z failure  "Deployment has failed"
+                    (deployment Eyxdf6NRhXUhLzLMsby9PszaXjPR, GitHub deployment id 7454056367)
+```
+
+Those two builds are the *same content*: `git rev-parse 6e8b9b5^{tree}` and `4fea791^{tree}` both give
+`81a8d8c4e6d7db449e2ee0ea24bf105016735fe3`, and `git diff 6e8b9b5 4fea791` is empty. The previous
+production build (`676331c`, 2026-10-30 09:03:17Z) succeeded, so this is not a standing production
+misconfiguration either. A 31-second rejection of a tree that builds as a Preview points at something
+scoped to the Production target — build-time environment variables that exist for Preview but not for
+Production, a paused project or spend limit, or a transient Vercel-side failure — and only their logs can
+say which. Reading them needs their session; the command Vercel itself suggests is
+`npx vercel inspect dpl_Eyxdf6NRhXUhLzLMsby9PszaXjPR --logs`. **Not attempted from here:** no Vercel
+token was read, requested, or used, and a bypass code is a secret that should not be pasted into a chat.
+
+**Production did not break.** Vercel left the previous good deployment serving: measured immediately
+after the failure, `https://nexus-agririse.vercel.app/api/data/geospatial?view=vectors` is still
+400 `Unknown view` and `weather?mode=history` is still 502, with `X-Vercel-Cache: HIT` and `Age: 50965`
+on the page itself. So production today is `676331c` — the H-6 lockdown file and the Phase 1 documents —
+and none of the geospatial build is live until a production build succeeds.
+
+Consequently §14 item 1 remains open for a second, different reason: the preview URLs are behind
+Deployment Protection, and the production host that is not protected does not yet carry the code.
