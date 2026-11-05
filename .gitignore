@@ -45,4 +45,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# harness output: the PDFs, page images and text dumps the verification scripts write.
+# Generated on every run, never evidence, and several megabytes — not for the repository.
+/artifacts/
+
 .vercel

@@ -1,9 +1,9 @@
 import Papa from 'papaparse';
 
-import { cachedFetch } from './cache';
+import { cachedFetch, lastSuccessAt, lastSuccessMatching } from './cache';
 import { httpJson, httpText } from './http';
-import { provenanceFor, SOURCES } from './sources';
-import type { ConnectorResult, EconomicIndicator, SourceError } from './types';
+import { provenanceFor, SOURCES, unavailableNotice, type UnavailableNotice } from './sources';
+import type { ConnectorResult, EconomicIndicator, SourceDescriptor, SourceError } from './types';
 
 /**
  * Two distinct things live here, and the app must never blur them:
@@ -17,6 +17,9 @@ import type { ConnectorResult, EconomicIndicator, SourceError } from './types';
 
 const WB_CURRENCY_CSV =
   'https://data.humdata.org/dataset/7752a1d8-7d7a-4feb-a857-11026dad7188/resource/7a810731-78d5-4342-b5aa-7ed4e5f8eab9/download/real-time-currency-prices-for-ethiopia.csv';
+
+/** The one bulk download behind the parallel-rate series; also the handle the last-success record hangs on. */
+const CURRENCY_CACHE_KEY = 'wb:currency';
 
 const WB_API = 'https://api.worldbank.org/v2/country/ETH/indicator';
 
@@ -76,11 +79,23 @@ export function parseWbIndicator(json: unknown, meta: (typeof WB_BENCHMARKS)[num
   return { code: meta.code, name: meta.name, frequency: meta.frequency, unit: meta.unit, observations };
 }
 
-function failure(error: SourceError, endpoint: string, units: string, methodology: string, kind: 'observed' | 'estimated'): ConnectorResult<never> {
+/**
+ * The publisher named here is the publisher that was asked. Attributing an indicator failure to
+ * the price feed — which the shared `failure` helper used to do — made the panel say a source was
+ * down that had not been contacted at all.
+ */
+function failure(
+  source: SourceDescriptor,
+  error: SourceError,
+  endpoint: string,
+  units: string,
+  methodology: string,
+  kind: 'observed' | 'estimated',
+): ConnectorResult<never> {
   return {
     ok: false,
     error,
-    provenance: provenanceFor(SOURCES.worldBankPrices, {
+    provenance: provenanceFor(source, {
       endpoint,
       observedAt: null,
       valueKind: kind,
@@ -93,6 +108,19 @@ function failure(error: SourceError, endpoint: string, units: string, methodolog
 }
 
 /**
+ * Which of the two World Bank products failed, and the last moment this server process read it.
+ * The parallel-rate CSV and the annual indicator API are separate publishers behind one name, so
+ * they get separate notices.
+ */
+export function wbParallelRateUnavailable(result: ConnectorResult<unknown>): UnavailableNotice | null {
+  return unavailableNotice(SOURCES.worldBankPrices, result, lastSuccessAt(CURRENCY_CACHE_KEY));
+}
+
+export function wbIndicatorsUnavailable(result: ConnectorResult<unknown>): UnavailableNotice | null {
+  return unavailableNotice(SOURCES.worldBankIndicators, result, lastSuccessMatching('wb:ind:'));
+}
+
+/**
  * Monthly parallel-market ETB/USD. Shown next to the NBE official rate, never
  * merged with it: the two measure different things.
  */
@@ -100,7 +128,7 @@ export async function getUnofficialRateSeries(months = 12): Promise<
   ConnectorResult<{ series: { observedOn: string; unofficialUsdToEtb: number }[] }>
 > {
   const wanted = Math.max(2, Math.min(60, months));
-  const outcome = await cachedFetch<{ series: { observedOn: string; unofficialUsdToEtb: number }[] }>('wb:currency', 24 * 3600, async () => {
+  const outcome = await cachedFetch<{ series: { observedOn: string; unofficialUsdToEtb: number }[] }>(CURRENCY_CACHE_KEY, 24 * 3600, async () => {
     // 5.7 MB, and at the throughput this file has been measured at that is ~55 s — over the
     // 45 s used for the small JSON endpoints. Cached 24 h, so it is paid once, and not retried
     // for the same reason as the WFP survey file: a stalled bulk download should fail fast and
@@ -114,7 +142,7 @@ export async function getUnofficialRateSeries(months = 12): Promise<
 
   const built = outcome.value;
   if (!built.ok) {
-    return failure(built.error, WB_CURRENCY_CSV, 'ETB per US$', 'World Bank real-time price feed, national market average line.', 'observed');
+    return failure(SOURCES.worldBankPrices, built.error, WB_CURRENCY_CSV, 'ETB per US$', 'World Bank real-time price feed, national market average line.', 'observed');
   }
 
   const recent = built.value.series.slice(-wanted);
@@ -141,7 +169,7 @@ export async function getBenchmarkIndicators(codes: string[] = WB_BENCHMARKS.map
   ConnectorResult<{ indicators: EconomicIndicator[] }>
 > {
   const selected = WB_BENCHMARKS.filter((b) => codes.includes(b.code));
-  if (selected.length === 0) return failure({ code: 'bad_input', message: 'Unknown indicator code' }, WB_API, 'various', 'World Bank open data', 'estimated');
+  if (selected.length === 0) return failure(SOURCES.worldBankIndicators, { code: 'bad_input', message: 'Unknown indicator code' }, WB_API, 'various', 'World Bank open data', 'estimated');
 
   const results = await Promise.all(
     selected.map(async (meta) => {
@@ -169,7 +197,7 @@ export async function getBenchmarkIndicators(codes: string[] = WB_BENCHMARKS.map
   }
 
   if (indicators.length === 0) {
-    return failure(firstError ?? { code: 'no_data', message: 'No benchmark indicators returned' }, WB_API, 'various', 'World Bank open data indicators', 'estimated');
+    return failure(SOURCES.worldBankIndicators, firstError ?? { code: 'no_data', message: 'No benchmark indicators returned' }, WB_API, 'various', 'World Bank open data indicators', 'estimated');
   }
 
   const latestPeriod = indicators

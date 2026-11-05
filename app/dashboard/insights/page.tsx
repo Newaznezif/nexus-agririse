@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { getUserDatasets } from '@/services/database';
 import { getUserInsights } from '@/services/insights';
+import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { demoDatasets } from '@/data/demoDatasets';
 import { demoInsights } from '@/data/demoInsights';
 import { Dataset, Insight } from '@/types';
@@ -17,6 +18,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { CountrySection } from '@/components/CountrySection';
+import { InsightReportPanel } from '@/components/report/InsightReportPanel';
 
 export default function InsightsPage() {
   const { user, loading } = useAuth();
@@ -25,7 +27,8 @@ export default function InsightsPage() {
 
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [insights, setInsights] = useState<Insight[]>([]);
-  const [fetching, setFetching] = useState(true);
+  const [fetching, setFetching] = useState(false);
+  const [fetched, setFetched] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<string>('');
 
   const fetchData = useCallback(async () => {
@@ -49,6 +52,7 @@ export default function InsightsPage() {
       }
     } finally {
       setFetching(false);
+      setFetched(true);
     }
   }, [user, isDemoMode]);
 
@@ -72,7 +76,7 @@ export default function InsightsPage() {
   const currentInsight = countryInsights[0];
   const currentDataset = filteredDatasets.find(ds => ds.id === currentInsight?.dataset_id);
 
-  if (loading || fetching) {
+  if (loading || fetching || (user && !fetched)) {
     return (
       <div className="flex h-[calc(100vh-12rem)] items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -83,7 +87,40 @@ export default function InsightsPage() {
     );
   }
 
-  if (!user) return null;
+  // A visitor with no session used to be held on the spinner above forever: `fetching` started true
+  // and `fetchData()` returns early without a user, so nothing ever cleared it. The redirect is
+  // unchanged — this block is what renders while it is in flight, and if it never lands.
+  if (!user) {
+    const configured = isSupabaseConfigured();
+    return (
+      <div className="h-full flex flex-col gap-6">
+        <div className="flex flex-col items-center justify-center bg-white dark:bg-zinc-900 rounded-3xl border-2 border-dashed border-gray-200 dark:border-zinc-800 p-12 text-center">
+          <div className="w-20 h-20 bg-gray-50 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-6">
+            <AlertCircle size={40} className="text-gray-300" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            {configured ? 'No active session' : 'Sign-in is not configured'}
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 max-w-sm">
+            {configured
+              ? 'Your session is missing or expired. Datasets, insights and the report publishers are only released to a signed-in account.'
+              : 'This deployment has no Supabase credentials, so no session can be opened. Nothing is standing in for one.'}
+          </p>
+          {configured && (
+            <button
+              onClick={() => router.push('/login')}
+              className="mt-8 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-colors"
+            >
+              Go to sign-in
+            </button>
+          )}
+        </div>
+
+        {/* Reachable without a session: the panel states its own auth requirement rather than hanging. */}
+        <InsightReportPanel />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col gap-6">
@@ -100,6 +137,9 @@ export default function InsightsPage() {
           </p>
         </div>
       </header>
+
+      {/* ── EVIDENCE REPORT DATA ── read-only view of /api/report/insight-data */}
+      <InsightReportPanel />
 
       {/* ── MAIN CONTENT (SIDEBAR + DASHBOARD) ── */}
       <div className="flex flex-col xl:flex-row gap-8 flex-1 min-h-0">

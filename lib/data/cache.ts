@@ -20,6 +20,19 @@ const MAX_ENTRIES = 240;
 const store = new Map<string, Entry<unknown>>();
 const inflight = new Map<string, Promise<CacheOutcome<unknown>>>();
 
+/**
+ * The last time each key produced a usable upstream answer, deliberately kept outside `store`.
+ *
+ * A failed fetch is not cached (see `cachedFetch`), which is correct for the data but wipes the
+ * one fact the unavailable state needs: that this file *was* readable at some point. Without it
+ * the UI can only say "unavailable", never "unavailable since 14:03, when the publisher last
+ * answered" — and the difference decides whether a farmer should wait or look elsewhere.
+ *
+ * Process-local like the cache itself, so whatever reads it must say so rather than present it
+ * as the publisher's own history.
+ */
+const lastSuccess = new Map<string, number>();
+
 export interface CacheOutcome<T> {
   value: T;
   servedFromCache: boolean;
@@ -115,11 +128,55 @@ export async function cachedFetch<T>(
   // A failure is never kept: caching an outage would make a recovered publisher
   // stay invisible for the rest of the TTL. Single-flight still coalesces the
   // concurrent requests that overlapped the failure.
-  if (!outcome.value.ok && !outcome.servedFromCache) store.delete(key);
+  if (outcome.value.ok) {
+    lastSuccess.set(key, outcome.storedAt);
+    if (lastSuccess.size > MAX_ENTRIES) {
+      for (const [oldestKey] of [...lastSuccess.entries()].sort((a, b) => a[1] - b[1]).slice(0, lastSuccess.size - MAX_ENTRIES)) {
+        lastSuccess.delete(oldestKey);
+      }
+    }
+  } else if (!outcome.servedFromCache) {
+    store.delete(key);
+  }
   return outcome;
 }
 
+/** When this process last got a usable answer for `key`, or null when it never has. */
+export function lastSuccessAt(key: string): number | null {
+  return lastSuccess.get(key) ?? null;
+}
+
+/**
+ * The same, for a source whose cache is split across several keys — NBE answers one date per
+ * request, so "when did this publisher last work" is the newest of its date keys, not any one
+ * of them.
+ */
+export function lastSuccessMatching(prefix: string): number | null {
+  let newest: number | null = null;
+  for (const [key, at] of lastSuccess) {
+    if (key.startsWith(prefix) && (newest === null || at > newest)) newest = at;
+  }
+  return newest;
+}
+
+/**
+ * Drop every cached payload and any in-flight call.
+ *
+ * `lastSuccess` is deliberately left alone. It is a record of what already happened upstream, not
+ * a copy of anything, and a flush is a statement about the payloads — erasing it would turn
+ * "this feed last worked at 14:03" into "this process has never read this file", which is a
+ * different and lesser claim about the same outage.
+ */
 export function cacheClear(): void {
   store.clear();
   inflight.clear();
+}
+
+/**
+ * Full reset, last-success history included. Only a check that must start from "this process has
+ * never read the file" should use it; nothing in the running app does.
+ */
+export function cacheReset(): void {
+  cacheClear();
+  lastSuccess.clear();
 }

@@ -24,6 +24,15 @@ export type SourceErrorCode =
   | 'no_data'
   | 'bad_input'
   | 'auth_required'
+  /**
+   * The publisher's edge refused our server as automated traffic rather than answering with
+   * the file. Distinct from `auth_required`: no credential would help, so the UI must not
+   * say "credentials needed", and distinct from `no_data`: the data is published, we are
+   * not permitted to fetch it.
+   */
+  | 'publisher_blocked'
+  /** The publisher answered 2xx and sent no bytes, so there is nothing to parse. */
+  | 'empty_response'
   | 'not_configured';
 
 export interface Provenance {
@@ -34,8 +43,13 @@ export interface Provenance {
   /** Endpoint actually called (no query secrets — none of these sources need keys). */
   endpoint: string;
   license: string;
-  /** ISO timestamp this payload was fetched by our server. */
-  retrievedAt: string;
+  /**
+   * ISO timestamp this payload was fetched by our server, or `null` when this envelope describes
+   * an answer that never arrived. A refusal must not date itself: a request the publisher never
+   * let through has no fetch to report, and stamping the moment the envelope was assembled would
+   * read as "we downloaded this at 14:03" to anything that trusts the field.
+   */
+  retrievedAt: string | null;
   /** ISO date the underlying observation was made or published; null when unknown. */
   observedAt: string | null;
   valueKind: ValueKind;

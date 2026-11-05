@@ -1,9 +1,15 @@
 'use client';
 import React, { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Coins, Store, TrendingUp } from 'lucide-react';
+import { Coins, RefreshCw, Store, TrendingUp } from 'lucide-react';
 
-import { ProvenanceLabel, SourceUnavailable, type ProvenanceView, type SourceErrorView } from '@/components/data/ProvenanceLabel';
+import {
+  ProvenanceLabel,
+  SourceUnavailable,
+  type ProvenanceView,
+  type SourceErrorView,
+  type UnavailableNoticeView,
+} from '@/components/data/ProvenanceLabel';
 import { SourceStatusPanel } from '@/components/data/SourceStatusPanel';
 import { Loading, Metric, Panel, Refreshing, dayLabel, fmt, fmtInt, monthLabel } from '@/components/data/ui';
 import { useLiveData } from '@/hooks/useLiveData';
@@ -80,7 +86,17 @@ interface ExchangeErrors {
   benchmark: SourceErrorView | null;
 }
 
-type ExchangeExtra = Partial<{ errors: ExchangeErrors }>;
+/** `unavailable` is present exactly where `errors` is, and carries the publisher and its last good read. */
+interface ExchangeNotices {
+  official: UnavailableNoticeView | null;
+  unofficial: UnavailableNoticeView | null;
+  benchmark: UnavailableNoticeView | null;
+}
+
+type ExchangeExtra = Partial<{ errors: ExchangeErrors; unavailable: ExchangeNotices }>;
+
+/** The markets route attaches one notice per failed answer; it is absent when rows arrived. */
+type MarketsExtra = Partial<{ unavailable: UnavailableNoticeView | null }>;
 
 /** The five commodities this product tracks; every value comes from WFP’s own rows. */
 const COMMODITIES = ['Teff', 'Maize', 'Wheat', 'Sorghum', 'Coffee'] as const;
@@ -125,9 +141,11 @@ export const MarketIntelligence = () => {
   const [commodity, setCommodity] = useState<(typeof COMMODITIES)[number]>('Teff');
   const [region, setRegion] = useState('');
 
-  const overview = useLiveData<OverviewPayload>('/api/data/markets?mode=overview');
-  const history = useLiveData<HistoryPayload>(`/api/data/markets?mode=history&commodity=${encodeURIComponent(commodity)}&months=36`);
-  const snapshot = useLiveData<SnapshotPayload>(
+  const overview = useLiveData<OverviewPayload, ProvenanceView, MarketsExtra>('/api/data/markets?mode=overview');
+  const history = useLiveData<HistoryPayload, ProvenanceView, MarketsExtra>(
+    `/api/data/markets?mode=history&commodity=${encodeURIComponent(commodity)}&months=36`,
+  );
+  const snapshot = useLiveData<SnapshotPayload, ProvenanceView, MarketsExtra>(
     `/api/data/markets?mode=snapshot&months=6&limit=400${region ? `&region=${encodeURIComponent(region)}` : ''}`,
   );
   const fx = useLiveData<ExchangePayload, ExchangeProvenances, ExchangeExtra>('/api/data/exchange?focus=all&points=8&months=18');
@@ -160,20 +178,40 @@ export const MarketIntelligence = () => {
   const officialSeries = (fx.data?.official ?? []).map((p) => ({ day: dayLabel(p.observedOn), 'ETB per US$': p.usdToEtb }));
   const unofficialSeries = (fx.data?.unofficial ?? []).map((p) => ({ month: monthLabel(p.observedOn), 'ETB per US$': p.unofficialUsdToEtb }));
   const fxErrors = fx.extra?.errors;
+  const fxNotices = fx.extra?.unavailable;
+
+  const anyRefreshing = overview.refreshing || history.refreshing || snapshot.refreshing || fx.refreshing;
+  const anyLoading = overview.loading || history.loading || snapshot.loading || fx.loading;
+  const recheck = () => {
+    overview.reload();
+    history.reload();
+    snapshot.reload();
+    fx.reload();
+  };
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <header className="flex items-center gap-3">
+      <header className="flex flex-wrap items-start gap-3">
         <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
           <Store size={22} />
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl md:text-3xl font-black tracking-tight text-gray-900 dark:text-white uppercase">Market Intelligence</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Prices surveyed in Ethiopian markets by the WFP rEMS monitoring programme, in ETB per the unit the publisher recorded. International commodity
             references are never presented as Ethiopian market prices here.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={recheck}
+          disabled={anyLoading || anyRefreshing}
+          title="Asks every publisher again. A cache in front of this server may answer with its copy; the fetch time shown under each figure is the copy's own."
+          className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-[11px] font-black uppercase tracking-wider text-gray-600 dark:text-gray-400 hover:text-emerald-600 disabled:opacity-50"
+        >
+          <RefreshCw size={13} className={anyRefreshing ? 'animate-spin' : ''} />
+          {anyRefreshing ? 'Re-checking' : 'Re-check feeds'}
+        </button>
       </header>
 
       <Panel
@@ -182,7 +220,15 @@ export const MarketIntelligence = () => {
         right={overview.refreshing && <Refreshing />}
       >
         {overview.loading && <Loading label="Loading WFP prices" />}
-        {!overview.loading && overview.error && <SourceUnavailable error={overview.error} source="WFP via HDX" />}
+        {!overview.loading && overview.error && (
+          <SourceUnavailable error={overview.error} source="WFP via HDX" notice={overview.extra?.unavailable ?? null} />
+        )}
+        {overview.data && overview.data.commodities.length === 0 && (
+          <NoRows
+            message={`WFP answered, and its ${overview.data.asOf || 'newest'} survey month holds no retail grain rows for this dataset, so there is no national average to print. A price from another month, unit or commodity is not put in its place.`}
+            provenance={overview.provenance}
+          />
+        )}
         {overview.data && overview.data.commodities.length > 0 && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -230,11 +276,14 @@ export const MarketIntelligence = () => {
         </div>
 
         {history.loading && <Loading label={`Loading ${commodity} history`} />}
-        {!history.loading && history.error && <SourceUnavailable error={history.error} source="WFP via HDX" />}
+        {!history.loading && history.error && (
+          <SourceUnavailable error={history.error} source="WFP via HDX" notice={history.extra?.unavailable ?? null} />
+        )}
         {!history.loading && history.data && series.length === 0 && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-            The publisher has no {commodity} series with at least two months under a single unit and price type, so no line is drawn. No price is invented.
-          </p>
+          <NoRows
+            message={`The publisher has no ${commodity} series with at least two months under a single unit and price type, so no line is drawn. No price is invented.`}
+            provenance={history.provenance}
+          />
         )}
 
         {chartData.length > 1 && (
@@ -302,7 +351,22 @@ export const MarketIntelligence = () => {
           </div>
 
           {snapshot.loading && <Loading label="Loading latest survey month" />}
-          {!snapshot.loading && snapshot.error && <SourceUnavailable error={snapshot.error} source="WFP via HDX" />}
+          {!snapshot.loading && snapshot.error && (
+            <SourceUnavailable error={snapshot.error} source="WFP via HDX" notice={snapshot.extra?.unavailable ?? null} />
+          )}
+
+          {snapshot.data && changes.length === 0 && (
+            <NoRows
+              message={
+                snapshot.data.rows.length === 0
+                  ? `WFP answered, and its ${snapshot.data.asOfLatestObservation || 'newest'} survey month holds no row${
+                      region ? ` for ${region}` : ''
+                    }. Nothing from another month or another region is shown in its place.`
+                  : `The ${snapshot.data.asOfLatestObservation || 'newest'} survey rows are here, but none of them is a market, commodity and unit the publisher also surveyed in the month before, so there is no month-on-month movement to draw. Two different markets are never compared to make one.`
+              }
+              provenance={snapshot.provenance}
+            />
+          )}
 
           {changes.length > 0 && snapshot.data && (
             <>
@@ -378,7 +442,7 @@ export const MarketIntelligence = () => {
                     {fx.provenance?.official && <ProvenanceLabel provenance={fx.provenance.official} compact />}
                   </>
                 ) : (
-                  <CategoryFailure label="National Bank of Ethiopia" error={fxErrors?.official} />
+                  <CategoryFailure label="National Bank of Ethiopia" error={fxErrors?.official} notice={fxNotices?.official} />
                 )}
               </div>
 
@@ -406,7 +470,7 @@ export const MarketIntelligence = () => {
                     {fx.provenance?.unofficial && <ProvenanceLabel provenance={fx.provenance.unofficial} compact />}
                   </>
                 ) : (
-                  <CategoryFailure label="World Bank currency series" error={fxErrors?.unofficial} />
+                  <CategoryFailure label="World Bank currency series" error={fxErrors?.unofficial} notice={fxNotices?.unofficial} />
                 )}
               </div>
 
@@ -442,7 +506,7 @@ export const MarketIntelligence = () => {
                     </p>
                   </div>
                 ) : (
-                  <CategoryFailure label="World Bank indicators" error={fxErrors?.benchmark} />
+                  <CategoryFailure label="World Bank indicators" error={fxErrors?.benchmark} notice={fxNotices?.benchmark} />
                 )}
               </div>
             </div>
@@ -456,13 +520,39 @@ export const MarketIntelligence = () => {
 };
 
 /** A category with no rows shows the publisher’s actual failure, never a placeholder number. */
-const CategoryFailure = ({ label, error }: { label: string; error?: SourceErrorView | null }) =>
+const CategoryFailure = ({
+  label,
+  error,
+  notice,
+}: {
+  label: string;
+  error?: SourceErrorView | null;
+  notice?: UnavailableNoticeView | null;
+}) =>
   error ? (
     <div className="mt-2">
-      <SourceUnavailable error={error} source={label} />
+      <SourceUnavailable error={error} source={label} notice={notice ?? null} />
     </div>
   ) : (
     <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-2 leading-relaxed">
       {label}: this response carried no rows, and nothing was substituted for them.
     </p>
   );
+
+/**
+ * A publisher that answered and simply had nothing for this scope.
+ *
+ * Stated apart from `SourceUnavailable` because the two call for different actions: a blocked
+ * feed is not something the reader can fix by asking for another town, and an empty scope is not
+ * an outage. Collapsing them into one "not available" box is how a working source ends up looking
+ * broken, which is the opposite of what this panel is for.
+ */
+const NoRows = ({ message, provenance }: { message: string; provenance: ProvenanceView | null }) => (
+  <div className="rounded-xl border border-dashed border-gray-200 dark:border-zinc-700 bg-gray-50/60 dark:bg-zinc-900/40 p-4">
+    <p className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">No rows for this scope</p>
+    <p className="text-sm text-gray-700 dark:text-gray-300 mt-1.5 leading-relaxed">{message}</p>
+    <div className="mt-2">
+      <ProvenanceLabel provenance={provenance} />
+    </div>
+  </div>
+);

@@ -1,6 +1,6 @@
-import { cachedFetch } from './cache';
+import { cachedFetch, lastSuccessMatching } from './cache';
 import { httpJson } from './http';
-import { provenanceFor, SOURCES } from './sources';
+import { provenanceFor, SOURCES, unavailableNotice, type UnavailableNotice } from './sources';
 import type { ConnectorResult, ExchangeRateObservation, SourceError } from './types';
 
 /**
@@ -60,7 +60,7 @@ export function parseNbeResponse(json: NbeResponse): { rows: ExchangeRateObserva
   return { rows, publishedOn };
 }
 
-function provenance(endpoint: string, observedAt: string | null, cacheHit: boolean, retrievedAt?: string) {
+function provenance(endpoint: string, observedAt: string | null, cacheHit: boolean, retrievedAt?: string, quality?: 'high' | 'medium' | 'low') {
   return provenanceFor(SOURCES.nbeRates, {
     endpoint,
     observedAt,
@@ -69,12 +69,23 @@ function provenance(endpoint: string, observedAt: string | null, cacheHit: boole
     methodology: METHODOLOGY,
     coverage: 'Ethiopia, official bank FX window',
     servedFromCache: cacheHit,
+    quality,
     retrievedAt,
   });
 }
 
 function failure(error: SourceError, endpoint: string): ConnectorResult<ExchangeRateObservation[]> {
-  return { ok: false, error, provenance: provenance(endpoint, null, false) };
+  // A non-answer never claims high quality: the envelope is describing a result with no rows in
+  // it, and the report register would otherwise print a grade for data nobody received.
+  return { ok: false, error, provenance: provenance(endpoint, null, false, undefined, 'low') };
+}
+
+/**
+ * The official-rate notice for the panel: NBE publishes per date, so "last successful update"
+ * is the newest date this process managed to read, whatever the request asked for.
+ */
+export function nbeUnavailable(result: ConnectorResult<unknown>): UnavailableNotice | null {
+  return unavailableNotice(SOURCES.nbeRates, result, lastSuccessMatching('nbe:'));
 }
 
 /**
@@ -140,7 +151,11 @@ export async function getUsdRateSeries(o: { wanted?: number; maxDaysBack?: numbe
   points.sort((a, b) => a.observedOn.localeCompare(b.observedOn));
 
   if (points.length === 0) {
-    return { ok: false, error: { code: 'no_data', message: 'No official USD rates found in the lookback window' }, provenance: provenance(NBE_ENDPOINT, null, false) };
+    return {
+      ok: false,
+      error: { code: 'no_data', message: `NBE published no official USD rate in the ${maxDaysBack} days this request was allowed to look back` },
+      provenance: provenance(NBE_ENDPOINT, null, false, undefined, 'low'),
+    };
   }
 
   return {

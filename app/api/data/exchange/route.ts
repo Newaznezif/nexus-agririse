@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 
 import { badRequest, errorResponse, fromConnector, intParam, isoDateParam, stringParam } from '@/lib/data/api';
-import { getExchangeRates, getUsdRateSeries } from '@/lib/data/nbeExchange';
-import { getBenchmarkIndicators, getUnofficialRateSeries, WB_BENCHMARKS } from '@/lib/data/worldBank';
+import { getExchangeRates, getUsdRateSeries, nbeUnavailable } from '@/lib/data/nbeExchange';
+import { getBenchmarkIndicators, getUnofficialRateSeries, WB_BENCHMARKS, wbIndicatorsUnavailable, wbParallelRateUnavailable } from '@/lib/data/worldBank';
 
 /**
  * GET /api/data/exchange
@@ -25,21 +25,25 @@ export async function GET(request: Request): Promise<NextResponse> {
   const focus = stringParam(url, 'focus') ?? 'all';
 
   if (focus === 'official') {
-    return fromConnector(await getExchangeRates(date ?? undefined), 6 * 3600);
+    const result = await getExchangeRates(date ?? undefined);
+    return fromConnector(result, 6 * 3600, nbeUnavailable(result));
   }
 
   if (focus === 'official-series') {
-    return fromConnector(await getUsdRateSeries({ wanted: intParam(url, 'points', 1, 12, 5) }), 6 * 3600);
+    const result = await getUsdRateSeries({ wanted: intParam(url, 'points', 1, 12, 5) });
+    return fromConnector(result, 6 * 3600, nbeUnavailable(result));
   }
 
   if (focus === 'unofficial') {
-    return fromConnector(await getUnofficialRateSeries(intParam(url, 'months', 2, 60, 12)), 24 * 3600);
+    const result = await getUnofficialRateSeries(intParam(url, 'months', 2, 60, 12));
+    return fromConnector(result, 24 * 3600, wbParallelRateUnavailable(result));
   }
 
   if (focus === 'benchmarks') {
     const codes = stringParam(url, 'codes');
     const selected = codes ? codes.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean) : WB_BENCHMARKS.map((b) => b.code);
-    return fromConnector(await getBenchmarkIndicators(selected), 7 * 86400);
+    const result = await getBenchmarkIndicators(selected);
+    return fromConnector(result, 7 * 86400, wbIndicatorsUnavailable(result));
   }
 
   if (focus !== 'all') return errorResponse({ code: 'bad_input', message: 'Unknown focus' });
@@ -51,6 +55,10 @@ export async function GET(request: Request): Promise<NextResponse> {
     getBenchmarkIndicators(),
   ]);
 
+  // One category failing never turns the others off: this body keeps answering ok:true with the
+  // rows it did get, and says per category which publisher is missing, why, and when this process
+  // last read it. `unavailable` mirrors `errors` key for key so the panel cannot show one without
+  // the other.
   return NextResponse.json(
     {
       ok: true,
@@ -69,6 +77,11 @@ export async function GET(request: Request): Promise<NextResponse> {
         official: officialSeries.ok ? null : officialSeries.error,
         unofficial: unofficial.ok ? null : unofficial.error,
         benchmark: benchmarks.ok ? null : benchmarks.error,
+      },
+      unavailable: {
+        official: nbeUnavailable(officialSeries),
+        unofficial: wbParallelRateUnavailable(unofficial),
+        benchmark: wbIndicatorsUnavailable(benchmarks),
       },
     },
     { status: 200, headers: { 'cache-control': 'public, s-maxage=900, stale-while-revalidate=2700' } },
