@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { FileDown, Loader2, UserCheck, ChevronDown } from 'lucide-react';
 import { generatePDFReport } from '@/services/pdfExport';
+import { loadUnicodeFont } from '@/services/pdfUnicodeFont';
 import { Dataset, Insight } from '@/types';
 
 interface ExportButtonProps {
@@ -10,7 +11,13 @@ interface ExportButtonProps {
   insight: Insight | null;
 }
 
-const AUTHORIZED_PROFILES = [
+/**
+ * The person named on a stored-analysis record. This is a label chosen in the browser: no session
+ * stands behind it, so the file it produces says "selected in the app" rather than "authorized",
+ * and prints no signature block. The evidence report (`InsightReportPanel`) is the one that can
+ * carry a confirmed identity, because the route reads it from a token Supabase Auth verified.
+ */
+const PROFILE_CHOICES = [
   { name: 'Newaz Nezif', role: 'Director General' },
   { name: 'Augustin Nkundimana', role: 'Executive' },
   { name: 'Adonis Wesley', role: 'Market Lead' },
@@ -18,7 +25,7 @@ const AUTHORIZED_PROFILES = [
 
 export const ExportButton = ({ dataset, insight }: ExportButtonProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedProfile, setSelectedProfile] = useState(AUTHORIZED_PROFILES[0]);
+  const [selectedProfile, setSelectedProfile] = useState(PROFILE_CHOICES[0]);
   const [showDropdown, setShowDropdown] = useState(false);
 
   const [exportData, setExportData] = useState<{ blob: Blob; filename: string } | null>(null);
@@ -55,8 +62,7 @@ export const ExportButton = ({ dataset, insight }: ExportButtonProps) => {
 
     setIsGenerating(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      const data = await generatePDFReport(dataset, insight, selectedProfile.name, selectedProfile.role);
+      const data = await generatePDFReport(dataset, insight, selectedProfile.name, selectedProfile.role, loadUnicodeFont);
       setExportData(data);
     } catch (error) {
       console.error('Failed to generate PDF:', error);
@@ -93,9 +99,9 @@ export const ExportButton = ({ dataset, insight }: ExportButtonProps) => {
             />
             <div className="absolute left-0 bottom-full mb-2 w-56 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
               <div className="p-3 bg-gray-50 dark:bg-zinc-800/50 border-b border-gray-100 dark:border-zinc-800">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Authorized Profile</p>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Named on the record</p>
               </div>
-              {AUTHORIZED_PROFILES.map((profile) => (
+              {PROFILE_CHOICES.map((profile) => (
                 <button
                   key={profile.name}
                   onClick={() => {
@@ -130,7 +136,7 @@ export const ExportButton = ({ dataset, insight }: ExportButtonProps) => {
         {isGenerating ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Encrypting...</span>
+            <span>Preparing record...</span>
           </>
         ) : exportData ? (
           <>
