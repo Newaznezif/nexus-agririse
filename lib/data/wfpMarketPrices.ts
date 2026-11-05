@@ -1,8 +1,8 @@
 import Papa from 'papaparse';
 
-import { cachedFetch } from './cache';
+import { cachedFetch, lastSuccessAt } from './cache';
 import { httpText } from './http';
-import { provenanceFor, SOURCES } from './sources';
+import { provenanceFor, SOURCES, unavailableNotice, type UnavailableNotice } from './sources';
 import type { ConnectorResult, MarketPriceObservation, MarketSnapshot, PriceChange, SourceError } from './types';
 
 /**
@@ -121,8 +121,10 @@ interface RowStore {
 }
 
 /** Whole-file snapshot, shared by every market query and cached per process. */
+const ROWS_CACHE_KEY = 'wfp:prices:all';
+
 async function getRowStore(): Promise<RowStore | { error: SourceError }> {
-  const outcome = await cachedFetch<{ rows: MarketPriceObservation[]; latestDate: string }>('wfp:prices:all', 12 * 3600, async () => {
+  const outcome = await cachedFetch<{ rows: MarketPriceObservation[]; latestDate: string }>(ROWS_CACHE_KEY, 12 * 3600, async () => {
     const loaded = await loadAllRows();
     if (!loaded.ok) return { ok: false, error: loaded.error };
     const latestDate = loaded.rows.reduce((max, r) => (r.observedOn > max ? r.observedOn : max), '');
@@ -139,7 +141,23 @@ async function getRowStore(): Promise<RowStore | { error: SourceError }> {
   };
 }
 
-function marketProvenance(o: { observedAt: string | null; servedFromCache: boolean; coverage: string; retrievedAt?: string }) {
+/**
+ * The price panels' answer when WFP gives us nothing: which publisher, why, and the last
+ * moment this server process actually read the file. `null` for that last one is the honest
+ * result on a fresh container that has never succeeded, and the UI says so rather than
+ * letting "unavailable" imply the file went away.
+ */
+export function wfpPricesUnavailable(result: ConnectorResult<unknown>): UnavailableNotice | null {
+  return unavailableNotice(SOURCES.wfpPrices, result, lastSuccessAt(ROWS_CACHE_KEY));
+}
+
+function marketProvenance(o: {
+  observedAt: string | null;
+  servedFromCache: boolean;
+  coverage: string;
+  retrievedAt?: string;
+  quality?: 'high' | 'medium' | 'low';
+}) {
   return provenanceFor(SOURCES.wfpPrices, {
     endpoint: HDX_PRICES_URL,
     observedAt: o.observedAt,
@@ -149,7 +167,11 @@ function marketProvenance(o: { observedAt: string | null; servedFromCache: boole
     methodology:
       'WFP market-monitoring survey of Ethiopian retail and wholesale outlets, published monthly on the ~15th. Prices are observations in the market’s currency; only rows with the same market, unit and price type are compared.',
     coverage: o.coverage,
+    quality: o.quality,
     retrievedAt: o.retrievedAt,
+    // Without this the flag would always read false, and a panel would describe a copy this
+    // process has held for hours as though it had just been downloaded.
+    servedFromCache: o.servedFromCache,
   });
 }
 
@@ -162,6 +184,8 @@ export function isGrainCommodity(name: string): boolean {
 
 export interface MarketQuery {
   region?: string | null;
+  /** A market as the publisher spells it. Matched exactly, case-insensitively: a report about one
+   *  town may not pick up a similarly-named one. Partial names resolve in `/api/data/locations`. */
   market?: string | null;
   commodity?: string | null;
   /** Match grain and cereal commodities only. */
@@ -180,7 +204,7 @@ export interface MarketQuery {
 export async function getMarketSnapshot(q: MarketQuery = {}): Promise<ConnectorResult<MarketSnapshot>> {
   const store = await getRowStore();
   if ('error' in store) {
-    return { ok: false, error: store.error, provenance: marketProvenance({ observedAt: null, servedFromCache: false, coverage: 'Ethiopia' }) };
+    return { ok: false, error: store.error, provenance: marketProvenance({ observedAt: null, servedFromCache: false, coverage: 'Ethiopia', quality: 'low' }) };
   }
 
   const monthsBack = Math.max(1, Math.min(24, q.months ?? 6));
@@ -191,7 +215,7 @@ export async function getMarketSnapshot(q: MarketQuery = {}): Promise<ConnectorR
   const filtered = store.rows.filter((r) => {
     if (!window.includes(r.observedOn)) return false;
     if (q.region && (r.admin1 ?? '').toLowerCase() !== q.region.toLowerCase()) return false;
-    if (q.market && !r.market.toLowerCase().includes(q.market.toLowerCase())) return false;
+    if (q.market && r.market.toLowerCase() !== q.market.toLowerCase()) return false;
     if (q.commodity && !r.commodity.toLowerCase().includes(q.commodity.toLowerCase())) return false;
     if (q.grainsOnly && !isGrainCommodity(r.commodity)) return false;
     if (q.retail && r.retail !== q.retail) return false;
@@ -213,7 +237,14 @@ export async function getMarketSnapshot(q: MarketQuery = {}): Promise<ConnectorR
     provenance: marketProvenance({
       observedAt: latest,
       servedFromCache: store.servedFromCache,
-      coverage: q.region ? `${q.region}, Ethiopia` : `Ethiopia (national survey, ${new Set(latestRows.map((r) => r.admin1)).size} regions at latest month)`,
+      // Coverage has to describe the rows actually returned. A market-filtered snapshot is not a
+      // national survey average, and saying so here is what stops a single town's prices being
+      // read as the country's.
+      coverage: q.market
+        ? `Survey markets named “${q.market}”, Ethiopia`
+        : q.region
+          ? `${q.region}, Ethiopia`
+          : `Ethiopia (national survey, ${new Set(latestRows.map((r) => r.admin1)).size} regions at latest month)`,
       retrievedAt: store.retrievedAt,
     }),
   };
@@ -273,7 +304,7 @@ export function computeChanges(rows: MarketPriceObservation[]): PriceChange[] {
 export async function getObservationWindow(months = 24): Promise<ConnectorResult<MarketPriceObservation[]>> {
   const store = await getRowStore();
   if ('error' in store) {
-    return { ok: false, error: store.error, provenance: marketProvenance({ observedAt: null, servedFromCache: false, coverage: 'Ethiopia' }) };
+    return { ok: false, error: store.error, provenance: marketProvenance({ observedAt: null, servedFromCache: false, coverage: 'Ethiopia', quality: 'low' }) };
   }
 
   const wanted = Math.max(1, Math.min(60, months));
@@ -299,7 +330,7 @@ export async function getGrainOverview(): Promise<
 > {
   const store = await getRowStore();
   if ('error' in store) {
-    return { ok: false, error: store.error, provenance: marketProvenance({ observedAt: null, servedFromCache: false, coverage: 'Ethiopia' }) };
+    return { ok: false, error: store.error, provenance: marketProvenance({ observedAt: null, servedFromCache: false, coverage: 'Ethiopia', quality: 'low' }) };
   }
 
   const latest = store.latestDate;
@@ -337,29 +368,46 @@ export async function getGrainOverview(): Promise<
   };
 }
 
-/** Monthly series for one commodity in one market — the chart data. */
+/** Monthly series for one commodity, scoped to a market, a region, or the whole survey. */
 export async function getCommodityHistory(q: {
   commodity: string;
   market?: string | null;
+  /** Publisher's `admin1`, matched exactly and case-insensitively like the snapshot filter. */
+  region?: string | null;
   months?: number;
 }): Promise<ConnectorResult<{ series: MarketPriceObservation[] }>> {
   const store = await getRowStore();
   if ('error' in store) {
-    return { ok: false, error: store.error, provenance: marketProvenance({ observedAt: null, servedFromCache: false, coverage: 'Ethiopia' }) };
+    return { ok: false, error: store.error, provenance: marketProvenance({ observedAt: null, servedFromCache: false, coverage: 'Ethiopia', quality: 'low' }) };
   }
 
   const wantMonths = Math.max(2, Math.min(120, q.months ?? 36));
   const term = q.commodity.toLowerCase();
   const rows = store.rows
-    .filter((r) => r.commodity.toLowerCase().includes(term) && (!q.market || r.market.toLowerCase() === q.market.toLowerCase()))
+    .filter(
+      (r) =>
+        r.commodity.toLowerCase().includes(term) &&
+        (!q.market || r.market.toLowerCase() === q.market.toLowerCase()) &&
+        (!q.region || (r.admin1 ?? '').toLowerCase() === q.region.toLowerCase()),
+    )
     .sort((a, b) => a.observedOn.localeCompare(b.observedOn))
     .slice(-wantMonths * 40);
 
   if (rows.length === 0) {
+    const scope = q.market ? ` at ${q.market}` : q.region ? ` in ${q.region}` : ' in this dataset';
     return {
       ok: false,
-      error: { code: 'no_data', message: `No WFP observations for “${q.commodity}” in this dataset` },
-      provenance: marketProvenance({ observedAt: store.latestDate, servedFromCache: false, coverage: 'Ethiopia' }),
+      error: { code: 'no_data', message: `No WFP observations for “${q.commodity}”${scope}` },
+      // The file was read — it just has no row for this scope. So this provenance describes the
+      // copy we are holding, including when it was actually fetched: claiming a retrieval that
+      // did not just happen would date a non-answer to this very moment.
+      provenance: marketProvenance({
+        observedAt: store.latestDate,
+        servedFromCache: store.servedFromCache,
+        coverage: 'Ethiopia',
+        quality: 'low',
+        retrievedAt: store.retrievedAt,
+      }),
     };
   }
 
@@ -370,7 +418,7 @@ export async function getCommodityHistory(q: {
     provenance: marketProvenance({
       observedAt: latest,
       servedFromCache: store.servedFromCache,
-      coverage: `${q.commodity}${q.market ? ` at ${q.market}` : ' across Ethiopian markets'}`,
+      coverage: `${q.commodity}${q.market ? ` at ${q.market}` : q.region ? ` in ${q.region}, Ethiopia` : ' across Ethiopian markets'}`,
       retrievedAt: store.retrievedAt,
     }),
   };

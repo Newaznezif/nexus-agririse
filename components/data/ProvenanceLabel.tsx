@@ -9,7 +9,8 @@ import React from 'react';
 export interface ProvenanceView {
   source: string;
   sourceUrl: string;
-  retrievedAt: string;
+  /** `null` when the envelope describes an answer that never arrived, so no line can claim it was fetched. */
+  retrievedAt: string | null;
   observedAt: string | null;
   valueKind: 'observed' | 'modeled' | 'forecast' | 'estimated' | 'imputed';
   units: string;
@@ -26,7 +27,25 @@ export interface SourceErrorView {
   status?: number;
 }
 
-const KIND_LABEL: Record<ProvenanceView['valueKind'], { label: string; cls: string }> = {
+/**
+ * Client mirror of `UnavailableNotice` in `lib/data/sources.ts`, kept structural for the same
+ * reason as `ProvenanceView`.
+ *
+ * `lastSuccessfulFetchAt` is the last moment *this server process* got a usable answer, and null
+ * when it never has — not the publisher's own publication history, which no route here can know.
+ * Rendering it as anything else would turn an outage we cannot date into a date we invented.
+ */
+export interface UnavailableNoticeView {
+  publisher: string;
+  publisherUrl: string;
+  reason: string;
+  reasonDetail: string;
+  lastSuccessfulFetchAt: string | null;
+  substituteUsed: false;
+}
+
+/** The one vocabulary for "what kind of number is this", shared by every provenance view. */
+export const KIND_LABEL: Record<ProvenanceView['valueKind'], { label: string; cls: string }> = {
   observed: { label: 'Observed', cls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' },
   modeled: { label: 'Modelled', cls: 'bg-sky-50 text-sky-700 dark:bg-sky-900/20 dark:text-sky-400' },
   forecast: { label: 'Forecast', cls: 'bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-400' },
@@ -90,7 +109,7 @@ export const ProvenanceLabel = ({ provenance, context, compact = false }: Props)
           <span aria-hidden>·</span>
           <span>observed {provenance.observedAt ? formatStamp(provenance.observedAt) : 'date not stated'}</span>
           <span aria-hidden>·</span>
-          <span>fetched {formatStamp(provenance.retrievedAt)} (EAT)</span>
+          <span>{provenance.retrievedAt ? `fetched ${formatStamp(provenance.retrievedAt)} (EAT)` : 'not fetched by this server'}</span>
           <span aria-hidden>·</span>
           <span title={provenance.methodology}>{provenance.units}</span>
           {context && (
@@ -105,8 +124,20 @@ export const ProvenanceLabel = ({ provenance, context, compact = false }: Props)
   );
 };
 
-/** Honest empty state: the reason, the source, and no invented number. */
-export const SourceUnavailable = ({ error, source }: { error: SourceErrorView; source?: string }) => (
+/**
+ * Honest empty state. With a notice it answers the three questions an outage raises — which
+ * publisher, why, and when it last worked — and states plainly when the third is unknowable.
+ * Without one it still names the source, the reason and the code, and never a placeholder.
+ */
+export const SourceUnavailable = ({
+  error,
+  source,
+  notice,
+}: {
+  error: SourceErrorView;
+  source?: string;
+  notice?: UnavailableNoticeView | null;
+}) => (
   <div className="rounded-xl border border-dashed border-orange-200 dark:border-orange-900/50 bg-orange-50/40 dark:bg-orange-950/10 p-4">
     <p className="text-xs font-black uppercase tracking-widest text-orange-700 dark:text-orange-400">
       Not available
@@ -115,8 +146,37 @@ export const SourceUnavailable = ({ error, source }: { error: SourceErrorView; s
       {source ? `${source}: ` : ''}
       {error.message}
     </p>
+    {notice && (
+      <dl className="mt-2 space-y-1 text-[11px] leading-relaxed text-gray-600 dark:text-gray-400">
+        <div className="flex flex-wrap gap-x-1.5">
+          <dt className="font-black uppercase tracking-widest text-gray-400">Publisher</dt>
+          <dd>
+            <a
+              href={notice.publisherUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-gray-300 underline-offset-2 hover:text-emerald-600 dark:hover:text-emerald-400"
+            >
+              {notice.publisher}
+            </a>
+          </dd>
+        </div>
+        <div className="flex flex-wrap gap-x-1.5">
+          <dt className="font-black uppercase tracking-widest text-gray-400">Why</dt>
+          <dd>{notice.reasonDetail}</dd>
+        </div>
+        <div className="flex flex-wrap gap-x-1.5">
+          <dt className="font-black uppercase tracking-widest text-gray-400">Last successful update</dt>
+          <dd>
+            {notice.lastSuccessfulFetchAt
+              ? `${formatStamp(notice.lastSuccessfulFetchAt)} (EAT), by this server process — no figure from it is shown as current`
+              : 'none: this server process has never read this file, so there is no update time to quote'}
+          </dd>
+        </div>
+      </dl>
+    )}
     <p className="text-[11px] text-gray-500 dark:text-gray-500 mt-1.5">
-      Code <code className="font-mono">{error.code}</code>. No substitute value is shown for this source.
+      Code <code className="font-mono">{notice?.reason ?? error.code}</code>. No substitute value is shown for this source.
     </p>
   </div>
 );

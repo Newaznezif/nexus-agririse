@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { nonAnswerProvenance, type UnavailableNotice } from './sources';
 import type { ConnectorResult, Provenance, SourceError, SourceErrorCode } from './types';
 
 /**
@@ -24,6 +25,10 @@ const STATUS_BY_CODE: Record<SourceErrorCode, number> = {
   payload_too_large: 502,
   parse_failed: 502,
   auth_required: 502,
+  // Both are the publisher not answering us with a file: our service is healthy, so the
+  // status describes the upstream condition rather than pretending the client asked wrong.
+  publisher_blocked: 502,
+  empty_response: 502,
   not_configured: 502,
 };
 
@@ -33,7 +38,16 @@ export interface DataPayload<T> {
   provenance: Provenance;
 }
 
-export function fromConnector<T>(result: ConnectorResult<T>, maxAgeSeconds = 300): NextResponse {
+/**
+ * `unavailable` turns a transport failure into a statement about a publisher: which one, why,
+ * and when this server last got a usable answer from it. Omitted on success — an answer that
+ * carried rows has nothing to declare — and the client keeps it as an extra top-level field.
+ */
+export function fromConnector<T>(
+  result: ConnectorResult<T>,
+  maxAgeSeconds = 300,
+  unavailable: UnavailableNotice | null = null,
+): NextResponse {
   if (result.ok) {
     return NextResponse.json(
       { ok: true, data: result.data, provenance: result.provenance } satisfies DataPayload<T>,
@@ -48,15 +62,25 @@ export function fromConnector<T>(result: ConnectorResult<T>, maxAgeSeconds = 300
     );
   }
 
-  return errorResponse(result.error, result.provenance);
+  return errorResponse(result.error, result.provenance, unavailable);
 }
 
 /**
  * `provenance` is null only when the request was rejected before any upstream call
- * (bad input): there is genuinely no publisher behind that answer.
+ * (bad input): there is genuinely no publisher behind that answer. When a publisher did fail to
+ * deliver, its provenance goes through `nonAnswerProvenance` first, so the envelope can never
+ * carry a fetch time for bytes this server never received.
  */
-export function errorResponse(error: SourceError, provenance: Provenance | null = null): NextResponse {
-  return NextResponse.json({ ok: false, error: sanitized(error), provenance }, { status: STATUS_BY_CODE[error.code] });
+export function errorResponse(
+  error: SourceError,
+  provenance: Provenance | null = null,
+  unavailable: UnavailableNotice | null = null,
+): NextResponse {
+  const disclosed = provenance === null ? null : nonAnswerProvenance(provenance, error);
+  return NextResponse.json(
+    { ok: false, error: sanitized(error), provenance: disclosed, ...(unavailable ? { unavailable } : {}) },
+    { status: STATUS_BY_CODE[error.code] },
+  );
 }
 
 /**

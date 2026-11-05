@@ -17,6 +17,26 @@ const DEFAULT_MAX_BYTES = 12 * 1024 * 1024;
 /** Some publishers answer a bare Node client with 403, so identify honestly. */
 const USER_AGENT = 'NexusAgriRise/1.0 (+agricultural intelligence; contact: hello@nexus-agririse)';
 
+/**
+ * Valid media ranges per payload kind. `Accept: text` is not a legal range (a type has to
+ * carry a subtype), so a strict edge can reject it outright. Measured against HDX on
+ * 2026-11-04: their answer did not change with this header, so this is header correctness,
+ * not a workaround for the block described below.
+ */
+const ACCEPT_BY_KIND: Record<HttpKind, string> = {
+  json: 'application/json',
+  text: 'text/csv, text/plain, */*',
+  bytes: '*/*',
+};
+
+/**
+ * Set by AWS WAF when its bot management has decided the client is automated. HDX answers
+ * a server-side fetch with `202 + this header + an empty body`, or with `406` and a JSON
+ * body of `{"error":"Blocked due to bot activity."}`. The header is the only signal we
+ * need — the upstream body is never read or forwarded.
+ */
+const BOT_ACTION_HEADER = 'x-amzn-waf-action';
+
 export interface HttpOptions {
   timeoutMs?: number;
   retries?: number;
@@ -102,10 +122,29 @@ async function attempt(
       method: options.method ?? 'GET',
       redirect: 'follow',
       signal: controller.signal,
-      headers: { 'user-agent': USER_AGENT, accept: wanted === 'bytes' ? '*/*' : wanted, ...options.headers },
+      headers: { 'user-agent': USER_AGENT, accept: ACCEPT_BY_KIND[wanted], ...options.headers },
     });
 
     const retryAfter = res.headers.get('retry-after');
+    const botAction = res.headers.get(BOT_ACTION_HEADER);
+
+    // A publisher that has decided we are a bot is not an outage, a missing value, or a
+    // credential problem. HDX's edge reaches us as `406` from one path and as a `202` with no
+    // bytes from another; both are measured (10/10 sequential attempts, 2026-11-04) to be
+    // deterministic, so neither is retried — that only adds latency to a card that will fail
+    // anyway. A 2xx that carries a real body is still served, even if an edge set this header:
+    // the file arriving is the evidence that matters, not the header.
+    if (res.status === 406 || (!res.ok && botAction !== null)) {
+      const error: SourceError = {
+        code: 'publisher_blocked',
+        message:
+          res.status === 406
+            ? 'The publisher’s bot protection refused this server-side request (HTTP 406). The data is still published; our server is not being allowed to download it.'
+            : `The publisher’s bot protection sent a ${botAction} response instead of the file (HTTP ${res.status}).`,
+        status: res.status,
+      };
+      return { retry: false, error };
+    }
 
     if (!res.ok) {
       const code = classify(res.status, retryAfter);
@@ -125,6 +164,23 @@ async function attempt(
     const bytes = await readCapped(res, maxBytes);
     if (!bytes) {
       return { retry: false, error: { code: 'payload_too_large', message: `Upstream payload exceeded ${maxBytes} bytes` } };
+    }
+
+    // A 2xx with no body used to be handed to the parsers as an empty document, which then
+    // reported "the file parsed to zero usable rows" — a claim about the publisher's data
+    // that is not true. Nothing arrived; say that instead. A bare empty response is cheap to
+    // retry, because reading zero bytes costs no bandwidth; an empty bot challenge is not,
+    // because it is a policy answer rather than a transient one.
+    if (bytes.byteLength === 0) {
+      const error: SourceError =
+        botAction !== null
+          ? {
+              code: 'publisher_blocked',
+              message: `The publisher’s bot protection sent a ${botAction} response instead of the file (HTTP ${res.status}).`,
+              status: res.status,
+            }
+          : { code: 'empty_response', message: `The publisher answered HTTP ${res.status} but sent no content`, status: res.status };
+      return { retry: botAction === null, error };
     }
 
     if (wanted === 'bytes') return { ok: true, kind: 'bytes', bytes };

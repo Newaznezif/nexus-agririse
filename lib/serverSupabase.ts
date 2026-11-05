@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 const REQUIRED_ENV = ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY'] as const;
 
 export type Caller =
-  | { ok: true; userId: string }
+  | { ok: true; userId: string; email: string | null }
   | { ok: false; status: 401 | 503; code: 'unauthenticated' | 'auth_unavailable'; message: string };
 
 /**
@@ -48,6 +48,7 @@ export async function verifyCaller(request: Request): Promise<Caller> {
   }
 
   let userId: string | undefined;
+  let email: string | null = null;
   try {
     const { data, error } = await client.auth.getUser(token);
     if (error) {
@@ -59,6 +60,8 @@ export async function verifyCaller(request: Request): Promise<Caller> {
         : { ok: false, status: 401, code: 'unauthenticated', message: 'Authentication required' };
     }
     userId = data.user?.id;
+    // Read from the same confirmed user record; nothing here widens what a token grants.
+    email = data.user?.email ?? null;
   } catch (err) {
     console.error(`Token verification threw: ${err instanceof Error ? err.name : 'unknown'}`);
     return { ok: false, status: 503, code: 'auth_unavailable', message: 'Unable to verify credentials' };
@@ -68,5 +71,5 @@ export async function verifyCaller(request: Request): Promise<Caller> {
     return { ok: false, status: 401, code: 'unauthenticated', message: 'Authentication required' };
   }
 
-  return { ok: true, userId };
+  return { ok: true, userId, email };
 }
